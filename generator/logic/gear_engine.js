@@ -174,7 +174,7 @@ export function generateGear(options = {}) {
  */
 export function enhanceStep(gear) {
   if (gear.enhance >= 15) {
-    return { gear: { ...gear }, detail: 'Gear is already fully enhanced (+15).' };
+    return { gear: { ...gear } };
   }
 
   const nextEnhance = Math.min(15, gear.enhance + 3);
@@ -186,7 +186,6 @@ export function enhanceStep(gear) {
   
   // Heroic gear unlocks 4th sub at +12 (enhance goes from 9 to 12)
   const shouldAddNewSub = gear.rarity === 'Heroic' && substats.length < 4 && gear.enhance === 9;
-  let detail = '';
 
   if (shouldAddNewSub) {
     const usedTypes = new Set([gear.main.type, ...substats.map(s => s.type)]);
@@ -236,8 +235,7 @@ export function enhanceStep(gear) {
       main: { ...gear.main, value: mainVal },
       substats,
       history
-    },
-    detail
+    }
   };
 }
 
@@ -254,11 +252,4 @@ export function enhanceToLevel(gear, targetLevel) {
   }
   
   return current;
-}
-
-/**
- * Instantly enhances the gear to +15.
- */
-export function enhanceToMax(gear) {
-  return enhanceToLevel(gear, 15);
 }

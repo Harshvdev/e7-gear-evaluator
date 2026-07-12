@@ -85,20 +85,6 @@ export const STAT_LABELS = {
   EffectResistancePercent: 'Effect Resist %',
 };
 
-export const STAT_SHORT = {
-  Attack: 'ATK',
-  AttackPercent: 'ATK%',
-  Health: 'HP',
-  HealthPercent: 'HP%',
-  Defense: 'DEF',
-  DefensePercent: 'DEF%',
-  Speed: 'SPD',
-  CritHitChancePercent: 'C.Chance',
-  CritHitDamagePercent: 'C.Dmg',
-  EffectivenessPercent: 'EFF',
-  EffectResistancePercent: 'EFF.RES',
-};
-
 // Main stat rules per slot
 export const FIXED_MAIN_BY_SLOT = {
   Weapon: 'Attack',
@@ -201,21 +187,6 @@ export const SPEED_PROBABILITIES = {
       { val: 4, prob: 0.39583 },
     ],
   },
-};
-
-// Standard average roll ranges for ES calculation
-export const SUBSTAT_ROLL_RANGES = {
-  AttackPercent: { min: 4, max: 8 },
-  HealthPercent: { min: 4, max: 8 },
-  DefensePercent: { min: 4, max: 8 },
-  Attack: { min: 33, max: 46 },
-  Health: { min: 157, max: 202 },
-  Defense: { min: 28, max: 35 },
-  Speed: { min: 2, max: 5 },
-  CritHitChancePercent: { min: 3, max: 5 },
-  CritHitDamagePercent: { min: 4, max: 7 },
-  EffectivenessPercent: { min: 4, max: 8 },
-  EffectResistancePercent: { min: 4, max: 8 },
 };
 
 export const MAIN_STAT_PROGRESSION = {
