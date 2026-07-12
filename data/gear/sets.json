@@ -1,0 +1,196 @@
+{
+  "HealthSet": {
+    "name": "HealthSet",
+    "pieces_required": 2,
+    "icon": "sethealth.png",
+    "effect": "+20% Health",
+    "stat_modifiers": {
+      "HealthPercent": 20
+    }
+  },
+  "DefenseSet": {
+    "name": "DefenseSet",
+    "pieces_required": 2,
+    "icon": "setdefense.png",
+    "effect": "+20% Defense",
+    "stat_modifiers": {
+      "DefensePercent": 20
+    }
+  },
+  "AttackSet": {
+    "name": "AttackSet",
+    "pieces_required": 4,
+    "icon": "setattack.png",
+    "effect": "+45% Attack",
+    "stat_modifiers": {
+      "AttackPercent": 45
+    }
+  },
+  "SpeedSet": {
+    "name": "SpeedSet",
+    "pieces_required": 4,
+    "icon": "setspeed.png",
+    "effect": "+25% Speed",
+    "stat_modifiers": {
+      "SpeedPercent": 25
+    }
+  },
+  "CriticalSet": {
+    "name": "CriticalSet",
+    "pieces_required": 2,
+    "icon": "setcritical.png",
+    "effect": "+12% Critical Hit Chance",
+    "stat_modifiers": {
+      "CriticalHitChancePercent": 12
+    }
+  },
+  "HitSet": {
+    "name": "HitSet",
+    "pieces_required": 2,
+    "icon": "sethit.png",
+    "effect": "+20% Effectiveness",
+    "stat_modifiers": {
+      "EffectivenessPercent": 20
+    }
+  },
+  "DestructionSet": {
+    "name": "DestructionSet",
+    "pieces_required": 4,
+    "icon": "setdestruction.png",
+    "effect": "+60% Critical Hit Damage",
+    "stat_modifiers": {
+      "CriticalHitDamagePercent": 60
+    }
+  },
+  "LifestealSet": {
+    "name": "LifestealSet",
+    "pieces_required": 4,
+    "icon": "setlifesteal.png",
+    "effect": "20% Lifesteal",
+    "stat_modifiers": {}
+  },
+  "CounterSet": {
+    "name": "CounterSet",
+    "pieces_required": 4,
+    "icon": "setcounter.png",
+    "effect": "30% Counterattack Chance",
+    "stat_modifiers": {}
+  },
+  "ResistSet": {
+    "name": "ResistSet",
+    "pieces_required": 2,
+    "icon": "setresist.png",
+    "effect": "+20% Effect Resistance",
+    "stat_modifiers": {
+      "EffectResistancePercent": 20
+    }
+  },
+  "UnitySet": {
+    "name": "UnitySet",
+    "pieces_required": 2,
+    "icon": "setunity.png",
+    "effect": "+4% Dual Attack Chance",
+    "stat_modifiers": {}
+  },
+  "RageSet": {
+    "name": "RageSet",
+    "pieces_required": 4,
+    "icon": "setrage.png",
+    "effect": "+30% damage to debuffed targets",
+    "stat_modifiers": {}
+  },
+  "ImmunitySet": {
+    "name": "ImmunitySet",
+    "pieces_required": 2,
+    "icon": "setimmunity.png",
+    "effect": "Immunity for 1 turn at battle start",
+    "stat_modifiers": {}
+  },
+  "PenetrationSet": {
+    "name": "PenetrationSet",
+    "pieces_required": 2,
+    "icon": "setpenetration.png",
+    "effect": "Single-target attacks penetrate 15% Defense",
+    "stat_modifiers": {}
+  },
+  "RevengeSet": {
+    "name": "RevengeSet",
+    "pieces_required": 4,
+    "icon": "setrevenge.png",
+    "effect": "+12% Speed + 0.5% Speed per 1% lost health (max +25% Speed)",
+    "stat_modifiers": {
+      "SpeedPercent": 12
+    }
+  },
+  "InjurySet": {
+    "name": "InjurySet",
+    "pieces_required": 4,
+    "icon": "setinjury.png",
+    "effect": "Reduce target's max HP by up to 6% per attack",
+    "stat_modifiers": {}
+  },
+  "ProtectionSet": {
+    "name": "ProtectionSet",
+    "pieces_required": 4,
+    "icon": "setprotection.png",
+    "effect": "Barrier of 10% caster HP to allies for 2 turns",
+    "stat_modifiers": {}
+  },
+  "TorrentSet": {
+    "name": "TorrentSet",
+    "pieces_required": 2,
+    "icon": "settorrent.png",
+    "effect": "+10% damage dealt, -10% Max HP",
+    "stat_modifiers": {
+      "HealthPercent": -10
+    }
+  },
+  "ReversalSet": {
+    "name": "ReversalSet",
+    "pieces_required": 4,
+    "icon": "setreversal.png",
+    "effect": "+15% Speed",
+    "stat_modifiers": {
+      "SpeedPercent": 15
+    }
+  },
+  "RiposteSet": {
+    "name": "RiposteSet",
+    "pieces_required": 4,
+    "icon": "setriposte.png",
+    "effect": "Riposte Set effect",
+    "stat_modifiers": {}
+  },
+  "WarfareSet": {
+    "name": "WarfareSet",
+    "pieces_required": 4,
+    "icon": "setwarfare.png",
+    "effect": "Opener Warfare Set effect (+20% HP)",
+    "stat_modifiers": {
+      "HealthPercent": 20
+    }
+  },
+  "PursuitSet": {
+    "name": "PursuitSet",
+    "pieces_required": 2,
+    "icon": "setpursuit.png",
+    "effect": "Pursuit effect",
+    "stat_modifiers": {}
+  },
+  "WeakeningSet": {
+    "name": "WeakeningSet",
+    "pieces_required": 4,
+    "icon": "setweakening.png",
+    "effect": "+15% Speed",
+    "stat_modifiers": {
+      "SpeedPercent": 15
+    }
+  },
+  "FervorSet": {
+    "name": "FervorSet",
+    "pieces_required": 2,
+    "icon": "setfervor.png",
+    "effect": "Fervor effect",
+    "stat_modifiers": {}
+  }
+}

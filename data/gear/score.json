@@ -1,0 +1,15 @@
+{
+  "coefficients": {
+    "AttackPercent": 1.0,
+    "DefensePercent": 1.0,
+    "HealthPercent": 1.0,
+    "EffectivenessPercent": 1.0,
+    "EffectResistancePercent": 1.0,
+    "Speed": 2.0,
+    "CriticalHitChancePercent": 1.6,
+    "CriticalHitDamagePercent": 1.142857,
+    "Attack": 0.088718,
+    "Defense": 0.160968,
+    "Health": 0.017759
+  }
+}
