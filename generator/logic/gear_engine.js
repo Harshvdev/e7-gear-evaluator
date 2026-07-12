@@ -8,7 +8,7 @@ import {
   ROLL_RANGES_85,
   ROLL_RANGES_88,
   SPEED_PROBABILITIES,
-  MAIN_STAT_TABLE
+  MAIN_STAT_PROGRESSION
 } from '../data/gear_data.js';
 
 // Helper utilities
@@ -53,12 +53,28 @@ export function rollSubstatValue(type, level, rarity) {
  */
 export function mainStatValue(slot, type, enhance, level = 85) {
   const cleanLevel = level === 88 ? 88 : 85;
-  const table = MAIN_STAT_TABLE[cleanLevel]?.[slot] ?? MAIN_STAT_TABLE[85]?.[slot];
-  const range = table?.[type];
-  if (!range) return 0;
+  const stats = MAIN_STAT_PROGRESSION[cleanLevel]?.[type];
+  if (!stats) return 0;
   
   const e = Math.max(0, Math.min(15, enhance));
-  return Math.round(range.base + (range.max - range.base) * (e / 15));
+  if (stats[e] !== undefined) {
+    return stats[e];
+  }
+  
+  // Interpolate between the two nearest keys
+  const keys = [0, 3, 6, 9, 12, 15];
+  let lowerKey = 0;
+  let upperKey = 15;
+  for (let i = 0; i < keys.length; i++) {
+    if (keys[i] <= e) lowerKey = keys[i];
+    if (keys[i] >= e) {
+      upperKey = keys[i];
+      break;
+    }
+  }
+  if (lowerKey === upperKey) return stats[lowerKey];
+  const fraction = (e - lowerKey) / (upperKey - lowerKey);
+  return Math.round(stats[lowerKey] + fraction * (stats[upperKey] - stats[lowerKey]));
 }
 
 /**

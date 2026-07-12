@@ -107,9 +107,9 @@ export const FIXED_MAIN_BY_SLOT = {
 };
 
 export const FLEX_MAIN_BY_SLOT = {
-  Necklace: ['AttackPercent', 'HealthPercent', 'DefensePercent', 'CritHitChancePercent', 'CritHitDamagePercent'],
-  Ring: ['AttackPercent', 'HealthPercent', 'DefensePercent', 'EffectivenessPercent', 'EffectResistancePercent'],
-  Boots: ['AttackPercent', 'HealthPercent', 'DefensePercent', 'Speed'],
+  Necklace: ['AttackPercent', 'HealthPercent', 'DefensePercent', 'CritHitChancePercent', 'CritHitDamagePercent', 'Health', 'Defense', 'Attack'],
+  Ring: ['AttackPercent', 'HealthPercent', 'DefensePercent', 'EffectivenessPercent', 'EffectResistancePercent', 'Health', 'Defense', 'Attack'],
+  Boots: ['AttackPercent', 'HealthPercent', 'DefensePercent', 'Speed', 'Health', 'Defense', 'Attack'],
 };
 
 // Level 85 roll ranges by rarity
@@ -218,55 +218,31 @@ export const SUBSTAT_ROLL_RANGES = {
   EffectResistancePercent: { min: 4, max: 8 },
 };
 
-export const MAIN_STAT_TABLE = {
+export const MAIN_STAT_PROGRESSION = {
   85: {
-    Weapon: { Attack: { base: 35, max: 525 } },
-    Helmet: { Health: { base: 320, max: 4725 } },
-    Armor: { Defense: { base: 25, max: 350 } },
-    Necklace: {
-      AttackPercent: { base: 7, max: 65 },
-      HealthPercent: { base: 7, max: 65 },
-      DefensePercent: { base: 7, max: 65 },
-      CritHitChancePercent: { base: 5, max: 60 },
-      CritHitDamagePercent: { base: 5, max: 60 },
-    },
-    Ring: {
-      AttackPercent: { base: 7, max: 65 },
-      HealthPercent: { base: 7, max: 65 },
-      DefensePercent: { base: 7, max: 65 },
-      EffectivenessPercent: { base: 8, max: 65 },
-      EffectResistancePercent: { base: 8, max: 65 },
-    },
-    Boots: {
-      AttackPercent: { base: 7, max: 65 },
-      HealthPercent: { base: 7, max: 65 },
-      DefensePercent: { base: 7, max: 65 },
-      Speed: { base: 7, max: 45 },
-    },
+    Attack: { 0: 100, 3: 150, 6: 200, 9: 250, 12: 325, 15: 525 },
+    Health: { 0: 540, 3: 810, 6: 1080, 9: 1350, 12: 1755, 15: 2835 },
+    Defense: { 0: 60, 3: 90, 6: 120, 9: 150, 12: 195, 15: 310 },
+    AttackPercent: { 0: 12, 3: 18, 6: 24, 9: 30, 12: 39, 15: 65 },
+    HealthPercent: { 0: 12, 3: 18, 6: 24, 9: 30, 12: 39, 15: 65 },
+    DefensePercent: { 0: 12, 3: 18, 6: 24, 9: 30, 12: 39, 15: 65 },
+    CritHitChancePercent: { 0: 11, 3: 15, 6: 20, 9: 25, 12: 33, 15: 60 },
+    CritHitDamagePercent: { 0: 13, 3: 19, 6: 25, 9: 31, 12: 40, 15: 70 },
+    EffectivenessPercent: { 0: 12, 3: 18, 6: 24, 9: 30, 12: 39, 15: 65 },
+    EffectResistancePercent: { 0: 12, 3: 18, 6: 24, 9: 30, 12: 39, 15: 65 },
+    Speed: { 0: 8, 3: 12, 6: 16, 9: 20, 12: 26, 15: 45 }
   },
   88: {
-    Weapon: { Attack: { base: 37, max: 560 } },
-    Helmet: { Health: { base: 340, max: 5050 } },
-    Armor: { Defense: { base: 26, max: 375 } },
-    Necklace: {
-      AttackPercent: { base: 8, max: 70 },
-      HealthPercent: { base: 8, max: 70 },
-      DefensePercent: { base: 8, max: 70 },
-      CritHitChancePercent: { base: 6, max: 65 },
-      CritHitDamagePercent: { base: 6, max: 65 },
-    },
-    Ring: {
-      AttackPercent: { base: 8, max: 70 },
-      HealthPercent: { base: 8, max: 70 },
-      DefensePercent: { base: 8, max: 70 },
-      EffectivenessPercent: { base: 9, max: 70 },
-      EffectResistancePercent: { base: 9, max: 70 },
-    },
-    Boots: {
-      AttackPercent: { base: 8, max: 70 },
-      HealthPercent: { base: 8, max: 70 },
-      DefensePercent: { base: 8, max: 70 },
-      Speed: { base: 8, max: 48 },
-    },
-  },
+    Attack: { 0: 103, 3: 154, 6: 206, 9: 258, 12: 336, 15: 550 },
+    Health: { 0: 553, 3: 829, 6: 1105, 9: 1381, 12: 1795, 15: 2970 },
+    Defense: { 0: 62, 3: 93, 6: 124, 9: 155, 12: 202, 15: 320 },
+    AttackPercent: { 0: 13, 3: 19, 6: 25, 9: 31, 12: 40, 15: 70 },
+    HealthPercent: { 0: 13, 3: 19, 6: 25, 9: 31, 12: 40, 15: 70 },
+    DefensePercent: { 0: 13, 3: 19, 6: 25, 9: 31, 12: 40, 15: 70 },
+    CritHitChancePercent: { 0: 12, 3: 18, 6: 24, 9: 30, 12: 36, 15: 65 },
+    CritHitDamagePercent: { 0: 14, 3: 21, 6: 28, 9: 35, 12: 45, 15: 75 },
+    EffectivenessPercent: { 0: 13, 3: 19, 6: 25, 9: 31, 12: 40, 15: 70 },
+    EffectResistancePercent: { 0: 13, 3: 19, 6: 25, 9: 31, 12: 40, 15: 70 },
+    Speed: { 0: 9, 3: 13, 6: 17, 9: 21, 12: 28, 15: 50 }
+  }
 };

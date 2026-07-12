@@ -34,7 +34,8 @@ const setsPillsGrid = document.getElementById('sets-pills-grid');
 // Flexible main stat types for Necklace/Ring/Boots
 const FLEXIBLE_MAIN_STATS = [
   'AttackPercent', 'HealthPercent', 'DefensePercent', 'Speed',
-  'CritHitChancePercent', 'CritHitDamagePercent', 'EffectivenessPercent', 'EffectResistancePercent'
+  'CritHitChancePercent', 'CritHitDamagePercent', 'EffectivenessPercent', 'EffectResistancePercent',
+  'Attack', 'Health', 'Defense'
 ];
 
 // Initialization

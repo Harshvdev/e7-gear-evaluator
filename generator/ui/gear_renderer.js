@@ -1,5 +1,5 @@
-// Epic Seven Gear UI Renderer
 import { STAT_LABELS, SET_LABELS } from '../data/gear_data.js';
+import { calculateEquipmentScore } from '../logic/gear_score.js';
 
 // Rarity theme configuration
 const RARITY_THEMES = {
@@ -76,6 +76,8 @@ export function renderGearCard(gear, containerEl) {
     `;
   });
 
+  const { gs, es } = calculateEquipmentScore(gear);
+
   containerEl.innerHTML = `
     <div class="gear-card ${gear.rarity.toLowerCase()} ${theme.cardBorder}">
       <div class="card-bg-overlay"></div>
@@ -109,6 +111,18 @@ export function renderGearCard(gear, containerEl) {
         <span class="substats-header">Substats</span>
         <div class="substats-list">
           ${substatsHtml}
+        </div>
+      </div>
+
+      <!-- Scores Section -->
+      <div class="card-scores-row" style="margin-top: auto; display: flex; justify-content: space-between; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 0.875rem;">
+        <div class="score-item" style="display: flex; flex-direction: column; gap: 0.125rem;">
+          <span style="font-size: 0.625rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Gear Score (GS)</span>
+          <span style="font-size: 1.15rem; font-weight: 900; color: #fff; font-family: var(--font-display);">${gs}</span>
+        </div>
+        <div class="score-item" style="display: flex; flex-direction: column; gap: 0.125rem; align-items: flex-end;">
+          <span style="font-size: 0.625rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Equipment Score (ES)</span>
+          <span style="font-size: 1.15rem; font-weight: 900; color: var(--primary); font-family: var(--font-display);">${es}</span>
         </div>
       </div>
     </div>
