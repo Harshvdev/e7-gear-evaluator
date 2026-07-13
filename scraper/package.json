@@ -1,0 +1,22 @@
+{
+  "name": "e7-hero-library-scraper",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Production-quality scraper for the Fribbels Epic Seven Hero Library (top build archetypes per hero).",
+  "scripts": {
+    "dev": "bun --hot run index.ts",
+    "start": "bun run index.ts",
+    "scrape": "bun run index.ts",
+    "resume": "bun run index.ts --resume",
+    "test-one": "bun run index.ts --hero \"Afternoon Soak Flan\"",
+    "test-batch": "bun run index.ts --limit 20 --delay 2000"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}
