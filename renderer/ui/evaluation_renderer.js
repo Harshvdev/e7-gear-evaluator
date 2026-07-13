@@ -175,14 +175,14 @@ function renderList() {
 
   // Helpers to calculate sorting parameters
   const getWorthyCount = (hero) => hero.builds.filter(b => b.verdict === 'Worthy').length;
-  
-  const getMinLandmines = (hero) => {
-    let min = Infinity;
-    hero.builds.forEach(build => {
-      const count = build.landmines ? build.landmines.length : 0;
-      if (count < min) min = count;
+
+  // Best WAS% across all builds of a hero (higher = more aligned)
+  const getBestWasPct = (hero) => {
+    let best = 0;
+    hero.builds.forEach(b => {
+      if ((b.wasPct || 0) > best) best = b.wasPct;
     });
-    return min === Infinity ? 0 : min;
+    return best;
   };
 
   if (activeTab === 'suited') {
@@ -195,13 +195,13 @@ function renderList() {
       h.heroName.toLowerCase().includes(searchQuery)
     );
 
-    // Sort: 1) Most worthy builds first, 2) Least landmines second, 3) Alphabetical third
+    // Sort: 1) Most worthy builds first, 2) Best WAS% second, 3) Alphabetical third
     filteredSuited.sort((a, b) => {
       const diff = getWorthyCount(b) - getWorthyCount(a);
       if (diff !== 0) return diff;
 
-      const lmDiff = getMinLandmines(a) - getMinLandmines(b);
-      if (lmDiff !== 0) return lmDiff;
+      const wasDiff = getBestWasPct(b) - getBestWasPct(a);
+      if (wasDiff !== 0) return wasDiff;
 
       return a.heroName.localeCompare(b.heroName);
     });
@@ -244,13 +244,13 @@ function renderList() {
       h.heroName.toLowerCase().includes(searchQuery) && matchesFilters(h, activeFilters)
     );
 
-    // Sort: 1) Most worthy builds first, 2) Least landmines second, 3) Alphabetical third
+    // Sort: 1) Most worthy builds first, 2) Best WAS% second, 3) Alphabetical third
     filteredHeroes.sort((a, b) => {
       const diff = getWorthyCount(b) - getWorthyCount(a);
       if (diff !== 0) return diff;
 
-      const lmDiff = getMinLandmines(a) - getMinLandmines(b);
-      if (lmDiff !== 0) return lmDiff;
+      const wasDiff = getBestWasPct(b) - getBestWasPct(a);
+      if (wasDiff !== 0) return wasDiff;
 
       return a.heroName.localeCompare(b.heroName);
     });
@@ -315,26 +315,34 @@ function renderHeroDetail() {
   let buildsHtml = '';
   selectedHero.builds.forEach(b => {
     const verdictClass = b.verdict === 'Worthy' ? 'eval-status-worthy' : 'eval-status-sell';
-    
+
+    // WAS progress bar (capped at 100% visually, but shown as actual %)
+    const wasPct = b.wasPct || 0;
+    const barPct = Math.min(wasPct, 100);
+    const barColor = b.verdict === 'Worthy' ? '#22c55e' : (wasPct >= 70 ? '#f59e0b' : '#ef4444');
+    const wasLabel = b.verdict === 'Worthy' ? `${wasPct.toFixed(1)}% ✓` : `${wasPct.toFixed(1)}%`;
+
     // Create rows for each substat of the gear
     let statsGridHtml = '';
     currentGear.substats.forEach(sub => {
-      // Find if this substat is a landmine in this build
+      // A landmine is a substat whose stat category the hero weights below the threshold
       const landmine = b.landmines.find(lm => lm.statType === sub.type);
       const isLandmine = !!landmine;
-      
+
       const savKey = STAT_TO_SAV_KEY[sub.type];
       const savValue = b.sav ? b.sav[savKey] : 0.0;
-      
+
       const rowClass = isLandmine ? 'landmine' : 'valid';
       const textClass = isLandmine ? 'landmine-text' : 'valid-text';
       const label = formatStatLabel(sub.type);
       const formattedSav = typeof savValue === 'number' ? savValue.toFixed(1) : '0.0';
+      // Show weight% when it's a landmine so user understands why
+      const weightNote = isLandmine ? ` (${(landmine.weight || 0).toFixed(1)}% priority)` : '';
 
       statsGridHtml += `
         <div class="eval-stat-row ${rowClass}">
           <span class="eval-stat-name">${label}</span>
-          <span class="eval-stat-sav ${textClass}">SAV: ${formattedSav}</span>
+          <span class="eval-stat-sav ${textClass}">SAV: ${formattedSav}${weightNote}</span>
         </div>
       `;
     });
@@ -346,6 +354,12 @@ function renderHeroDetail() {
           <span class="eval-status-badge ${verdictClass}">${b.verdict}</span>
         </div>
         <div class="eval-build-sets">${b.sets.join(' / ')} Set</div>
+        <div class="eval-was-bar-container" title="Weighted Alignment Score: ${wasPct.toFixed(1)}% of threshold">
+          <div class="eval-was-bar-track">
+            <div class="eval-was-bar-fill" style="width: ${barPct}%; background: ${barColor};"></div>
+          </div>
+          <span class="eval-was-label" style="color: ${barColor};">${wasLabel}</span>
+        </div>
         <div class="eval-stat-grid">
           ${statsGridHtml}
         </div>
