@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev:generator": "PATH=$PATH:/usr/local/go/bin go run ./generator/main.go ./generator/data.go ./generator/engine.go",
-    "dev:evaluator": "PATH=$PATH:/usr/local/go/bin go run ./evaluator/main.go",
+    "dev:generator": "PATH=$PATH:/usr/local/go/bin go run -C ./generator .",
+    "dev:evaluator": "PATH=$PATH:/usr/local/go/bin go run -C ./evaluator .",
     "dev:renderer": "bun run renderer/server.js",
     "dev": "bun run dev:generator & bun run dev:evaluator & bun run dev:renderer & wait"
   }
