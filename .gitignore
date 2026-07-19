@@ -48,3 +48,5 @@ Thumbs.db
 # misc
 misc/
 icons/
+graphify-out/
+.agents/
