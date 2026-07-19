@@ -38,7 +38,7 @@ const (
 )
 
 // EvaluateLayer1 runs the full Layer 1 suitability evaluation for a gear piece.
-func EvaluateLayer1(gear Gear) *Layer1Result {
+func EvaluateLayer1(gear Gear, excludedBuilds map[string][]int) *Layer1Result {
 	result := &Layer1Result{
 		SuitedBuilds: []L1SuitedBuild{},
 		HeroDetails:  []L1HeroDetail{},
@@ -88,6 +88,9 @@ func EvaluateLayer1(gear Gear) *Layer1Result {
 		}
 
 		for _, build := range hero.Builds {
+			if isBuildExcluded(hero.Hero, build.Rank, excludedBuilds) {
+				continue
+			}
 			heroWeights := computeHeroWeights(build.Sav)
 
 			wasFinal, threshold, missingCore, _ := scoreBuildAlignment(gear, build.Sav)
@@ -152,7 +155,9 @@ func EvaluateLayer1(gear Gear) *Layer1Result {
 			}
 		}
 
-		result.HeroDetails = append(result.HeroDetails, heroDetail)
+		if len(heroDetail.Builds) > 0 {
+			result.HeroDetails = append(result.HeroDetails, heroDetail)
+		}
 	}
 
 	if hasAtLeastOneWorthyBuild {
@@ -339,6 +344,22 @@ func isRightSideSlot(slot string) bool {
 func hasSpeedSubstat(substats []Substat) bool {
 	for _, sub := range substats {
 		if sub.Type == "Speed" {
+			return true
+		}
+	}
+	return false
+}
+
+func isBuildExcluded(hero string, rank int, excluded map[string][]int) bool {
+	if excluded == nil {
+		return false
+	}
+	ranks, found := excluded[hero]
+	if !found {
+		return false
+	}
+	for _, r := range ranks {
+		if r == rank {
 			return true
 		}
 	}

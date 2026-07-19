@@ -13,6 +13,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/evaluate", handleEvaluate)
+	mux.HandleFunc("/api/heroes", handleGetHeroes)
 
 	handler := corsMiddleware(mux)
 

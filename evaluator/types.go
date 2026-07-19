@@ -51,12 +51,25 @@ func (s Sav) Get(key string) float64 {
 	}
 }
 
+type AverageStats struct {
+	Atk float64 `json:"atk"`
+	Def float64 `json:"def"`
+	Hp  float64 `json:"hp"`
+	Spd float64 `json:"spd"`
+	Cc  float64 `json:"cc"`
+	Cd  float64 `json:"cd"`
+	Eff float64 `json:"eff"`
+	Res float64 `json:"res"`
+	Gs  float64 `json:"gs"`
+}
+
 // HeroBuild is one ranked build variant for a hero (top N by usage).
 type HeroBuild struct {
-	Rank  int      `json:"rank"`
-	Usage float64  `json:"usage"`
-	Sets  []string `json:"sets"`
-	Sav   Sav      `json:"sav"`
+	Rank         int          `json:"rank"`
+	Usage        float64      `json:"usage"`
+	Sets         []string     `json:"sets"`
+	AverageStats AverageStats `json:"averageStats"`
+	Sav          Sav          `json:"sav"`
 }
 
 // HeroStats is a single hero entry from average_build_stats.json.
@@ -108,6 +121,11 @@ type Gear struct {
 	Main     MainStat  `json:"main"`
 	Substats []Substat `json:"substats"`
 	Score    GearScore `json:"score"`
+}
+
+type EvaluateRequest struct {
+	Gear           Gear             `json:"gear"`
+	ExcludedBuilds map[string][]int `json:"excludedBuilds"` // HeroName -> list of excluded build ranks (1-indexed)
 }
 
 // ---------------------------------------------------------------------------

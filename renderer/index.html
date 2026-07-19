@@ -20,6 +20,13 @@
         </svg>
         Options
       </button>
+      
+      <button id="hero-config-btn" class="btn-secondary">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+        </svg>
+        Hero Config
+      </button>
 
       <button id="generate-btn" class="btn-primary">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -131,6 +138,64 @@
 
     <div class="dialog-footer">
       <button id="dialog-save-btn" class="btn-primary button-full">Save Options</button>
+    </div>
+  </dialog>
+
+  <!-- Hero Selection and Build Configuration Dialog -->
+  <dialog id="hero-config-dialog" closedby="any" style="max-width: 1080px; width: 95%;">
+    <div class="dialog-header">
+      <h2>Hero & Build Configuration</h2>
+      <button id="hero-config-close-btn" class="dialog-close-x">&times;</button>
+    </div>
+    
+    <div class="dialog-body">
+      <!-- Search & Filters Container -->
+      <div class="hero-config-filters-container">
+        <div style="flex: 1; min-width: 200px;">
+          <input type="text" id="hero-config-search" placeholder="Search hero by name..." class="eval-search-input" style="width: 100%; margin: 0;">
+        </div>
+        <div class="hero-config-dropdowns">
+          <select id="hero-config-filter-role" class="select-dropdown">
+            <option value="">All Roles</option>
+            <option value="warrior">Warrior</option>
+            <option value="knight">Knight</option>
+            <option value="thief">Thief</option>
+            <option value="ranger">Ranger</option>
+            <option value="mage">Mage</option>
+            <option value="manauser">Soul Weaver</option>
+          </select>
+          <select id="hero-config-filter-element" class="select-dropdown">
+            <option value="">All Elements</option>
+            <option value="fire">Fire</option>
+            <option value="ice">Ice</option>
+            <option value="wind">Wind</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+          <select id="hero-config-filter-rarity" class="select-dropdown">
+            <option value="">All Rarities</option>
+            <option value="5">5★</option>
+            <option value="4">4★</option>
+            <option value="3">3★</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Bulk Selection Tools -->
+      <div class="hero-config-bulk-actions">
+        <button id="hero-bulk-enable-all" class="btn-secondary btn-compact">Enable All</button>
+        <button id="hero-bulk-disable-all" class="btn-secondary btn-compact">Disable All</button>
+        <button id="hero-bulk-rank1-only" class="btn-secondary btn-compact">Rank 1 Builds Only</button>
+      </div>
+
+      <!-- Hero & Build Grid/List -->
+      <div class="hero-config-grid" id="hero-config-list-container">
+        <!-- Dynmically rendered list of hero items with switches and build checkboxes -->
+      </div>
+    </div>
+
+    <div class="dialog-footer">
+      <button id="hero-config-save-btn" class="btn-primary button-full">Save Configuration</button>
     </div>
   </dialog>
 
