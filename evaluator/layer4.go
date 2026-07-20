@@ -140,7 +140,7 @@ func EvaluateLayer4(gear Gear, profile HeroProfile, baseStats HeroBaseStats) L4H
 					gate3Pass = false
 				}
 			} else {
-				// Weighted mode: must serve at least ceil(k/2)
+				// Weighted mode: must serve at least ceil(k/2) of k min-bound stats
 				target := int(math.Ceil(float64(k) / 2.0))
 				if servedCount < target {
 					gate3Pass = false

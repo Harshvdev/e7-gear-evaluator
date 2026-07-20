@@ -137,3 +137,57 @@ func TestEvaluateLayer3_SpeedCheck(t *testing.T) {
 		t.Errorf("Expected speed check tag to be false when toggle is OFF")
 	}
 }
+
+func TestEvaluateLayer4_SpeedMinRequirement(t *testing.T) {
+	// 0-speed necklace (like the Protection set necklace)
+	gearNoSpeed := Gear{
+		Slot:    "Necklace",
+		Level:   88,
+		Rarity:  "Epic",
+		Enhance: 0,
+		Set:     "Protection",
+		Main:    MainStat{Type: "AttackPercent", Value: 13.0},
+		Substats: []Substat{
+			{Type: "EffectivenessPercent", Value: 5.0, Rolls: 1},
+			{Type: "Attack", Value: 42.0, Rolls: 1},
+			{Type: "CritHitDamagePercent", Value: 7.0, Rolls: 1},
+			{Type: "EffectResistancePercent", Value: 5.0, Rolls: 1},
+		},
+	}
+
+	spdMin := 251.0
+	atkMin := 3562.0
+	cdMin := 280.0
+
+	profileWithSpdMin := HeroProfile{
+		HeroID:    "Zio_Build_1",
+		HeroName:  "Zio",
+		BuildRank: 1,
+		Selected:  true,
+		StatRanges: map[string]StatBounds{
+			"spd": {Min: &spdMin},
+			"atk": {Min: &atkMin},
+			"cd":  {Min: &cdMin},
+		},
+		Priorities: map[string]int{
+			"atk": 3, "cd": 3, "spd": 2, "cc": 1, "eff": 1, "def": 0, "hp": 0, "res": 0,
+		},
+		WeightMode: "strict",
+	}
+
+	baseStats := HeroBaseStats{
+		Atk: 1255, Def: 683, Hp: 6266, Spd: 106,
+		Cc: 0.15, Cd: 1.5, Eff: 0.18, Res: 0,
+	}
+
+	l4Res := EvaluateLayer4(gearNoSpeed, profileWithSpdMin, baseStats)
+
+	// In strict mode, missing spd.min (serving 2/3 min stats) fails Gate 3
+	if l4Res.GateResults[2] {
+		t.Errorf("Expected Gate 3 to fail for 0-speed gear when spd.min target is set in strict mode, but it passed")
+	}
+
+	if l4Res.Pass {
+		t.Errorf("Expected Layer 4 evaluation to FAIL for 0-speed gear when spd.min target is set in strict mode, but it passed")
+	}
+}
