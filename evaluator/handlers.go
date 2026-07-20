@@ -21,19 +21,8 @@ func handleEvaluate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Layer 1: Which heroes/builds is this piece suited for?
-	l1Result := EvaluateLayer1(req.Gear, req.ExcludedBuilds)
-
-	// Layer 2: Is it worth rolling? (To be implemented)
-	l2Result := EvaluateLayer2(req.Gear, l1Result)
-
-	// Construct unified response containing all evaluation layers
-	resp := EvaluationResponse{
-		GearID:       req.Gear.ID,
-		Layer1Result: l1Result, // Embedded for backward-compatible top-level JSON fields
-		Layer1:       l1Result, // Explicit "layer1" envelope for clean layered access
-		Layer2:       l2Result,
-	}
+	// Run the 7-Layer Evaluation Pipeline
+	resp := RunEvaluationPipeline(req.Gear, req.SpeedCheck, req.ExcludedBuilds, req.CustomProfiles)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {

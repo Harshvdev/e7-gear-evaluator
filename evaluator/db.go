@@ -27,6 +27,7 @@ var (
 	heroRarities   = make(map[string]int)
 	heroRoles      = make(map[string]string)
 	heroAttributes = make(map[string]string)
+	heroBaseStatsMap = make(map[string]HeroBaseStats)
 )
 
 // ---------------------------------------------------------------------------
@@ -83,6 +84,7 @@ func loadHeroMetadata() {
 		heroRarities[key] = h.Rarity
 		heroRoles[key] = h.Role
 		heroAttributes[key] = h.Attribute
+		heroBaseStatsMap[key] = h.BaseStats.Lv60
 	}
 	fmt.Printf("Loaded metadata for %d heroes.\n", len(heroIcons))
 }

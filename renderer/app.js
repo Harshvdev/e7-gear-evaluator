@@ -15,6 +15,12 @@ let allHeroes = null;
 let heroConfig = {};
 let tempHeroConfig = {};
 
+// Custom Build Requirements State
+let customProfiles = {};
+let editingHeroName = null;
+let editingBuildRank = null;
+let editingSetCombos = [];
+
 // DOM Elements - Main Page
 const configBtn = document.getElementById('config-btn');
 const heroConfigBtn = document.getElementById('hero-config-btn');
@@ -46,6 +52,29 @@ const heroConfigDialog = document.getElementById('hero-config-dialog');
 const heroConfigCloseBtn = document.getElementById('hero-config-close-btn');
 const heroConfigSaveBtn = document.getElementById('hero-config-save-btn');
 
+// DOM Elements - Build Custom Config Modal Settings
+const buildConfigModal = document.getElementById('build-config-modal');
+const buildConfigCloseBtn = document.getElementById('build-config-close-btn');
+const buildConfigCancelBtn = document.getElementById('build-config-cancel-btn');
+const buildConfigSaveBtn = document.getElementById('build-config-save-btn');
+const buildConfigResetBtn = document.getElementById('build-config-reset-btn');
+const addSetComboBtn = document.getElementById('add-set-combo-btn');
+
+// Lists for Custom Requirements Editor
+const SET_NAMES_4PC = ["Speed", "Attack", "Destruction", "Lifesteal", "Counter", "Rage", "Revenge", "Protection", "None"];
+const SET_NAMES_2PC = ["Health", "Defense", "Critical", "Hit", "Resistance", "Immunity", "Penetration", "Torrent", "Injury", "Unity", "None"];
+
+const ACC_MAINS_LIST = [
+  { value: "HealthPercent", label: "Health %" },
+  { value: "DefensePercent", label: "Defense %" },
+  { value: "AttackPercent", label: "Attack %" },
+  { value: "CritHitChancePercent", label: "Crit Chance %" },
+  { value: "CritHitDamagePercent", label: "Crit Damage %" },
+  { value: "EffectivenessPercent", label: "Effectiveness %" },
+  { value: "EffectResistancePercent", label: "Resistance %" },
+  { value: "Speed", label: "Speed" }
+];
+
 // Initialization
 document.addEventListener('DOMContentLoaded', async () => {
   await fetchConfig();
@@ -68,15 +97,52 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Event Listeners - Modal
   dialogCloseBtn.addEventListener('click', () => configDialog.close());
-  dialogSaveBtn.addEventListener('click', () => {
+  dialogSaveBtn.addEventListener('click', async () => {
     configDialog.close();
+    if (currentGear) {
+      await fetchEvaluatorData(currentGear);
+    }
     render();
   });
 
   // Event Listeners - Hero Config Modal
   heroConfigCloseBtn.addEventListener('click', () => heroConfigDialog.close());
   heroConfigSaveBtn.addEventListener('click', saveHeroConfig);
+
+  // Event Listeners - Custom Build Config Modal
+  buildConfigCloseBtn.addEventListener('click', () => buildConfigModal.close());
+  buildConfigCancelBtn.addEventListener('click', () => buildConfigModal.close());
+  buildConfigResetBtn.addEventListener('click', handleResetBuildConfig);
+  buildConfigSaveBtn.addEventListener('click', saveBuildConfig);
+  addSetComboBtn.addEventListener('click', handleAddSetCombo);
+
+  // Setup slider live updates
+  setupSliderLabelListeners();
 });
+
+/**
+ * Live updates for slider value badges in Custom Requirements Editor
+ */
+function setupSliderLabelListeners() {
+  const sliders = ["atk", "hp", "def", "spd", "cc", "cd", "eff", "res"];
+  sliders.forEach(s => {
+    const slider = document.getElementById(`prio-${s}`);
+    const badge = document.getElementById(`prio-${s}-val`);
+    if (slider && badge) {
+      slider.addEventListener('input', (e) => {
+        badge.innerText = e.target.value;
+      });
+    }
+  });
+
+  const topSlider = document.getElementById('prio-top');
+  const topBadge = document.getElementById('prio-top-val');
+  if (topSlider && topBadge) {
+    topSlider.addEventListener('input', (e) => {
+      topBadge.innerText = `${e.target.value}%`;
+    });
+  }
+}
 
 /**
  * Fetches initial configuration/metadata from Go Backend API
@@ -444,9 +510,12 @@ async function fetchEvaluatorData(gear) {
     return;
   }
   try {
+    const speedCheckEl = document.getElementById('speed-check-toggle');
     const reqBody = {
       gear: gear,
-      excludedBuilds: getExcludedBuildsPayload()
+      excludedBuilds: getExcludedBuildsPayload(),
+      speedCheck: speedCheckEl && speedCheckEl.checked ? "ON" : "OFF",
+      customProfiles: customProfiles
     };
     const res = await fetch(`${EVALUATOR_API_BASE}/api/evaluate`, {
       method: 'POST',
@@ -522,6 +591,18 @@ async function fetchHeroes() {
       heroConfig = {};
     }
 
+    // Load saved custom profiles
+    const storedCustom = localStorage.getItem('e7_custom_profiles');
+    if (storedCustom) {
+      try {
+        customProfiles = JSON.parse(storedCustom);
+      } catch (e) {
+        customProfiles = {};
+      }
+    } else {
+      customProfiles = {};
+    }
+
     setupHeroConfigDialog();
   } catch (err) {
     console.error('Failed to fetch heroes list:', err);
@@ -589,10 +670,11 @@ function setupHeroConfigDialog() {
         <label class="build-card-check">
           <input type="checkbox" class="build-checkbox" data-hero-name="${h.name}" data-build-rank="${b.rank}">
           <div class="build-card-content">
-            <div class="build-card-header">
+            <div class="build-card-header" style="display:flex; justify-content:space-between; align-items:center;">
               <span class="build-card-rank">Build ${b.rank}</span>
-              <span class="build-card-sets" title="${setsStr}">${setsStr}${usageStr}</span>
+              <span class="build-config-link" data-hero-name="${h.name}" data-build-rank="${b.rank}" style="color: var(--primary); font-size: 0.6875rem; text-decoration: underline; cursor: pointer; z-index: 10;">Configure</span>
             </div>
+            <div class="build-card-sets" title="${setsStr}" style="font-size: 0.6875rem; color: var(--text-muted); margin-bottom: 0.25rem;">${setsStr}${usageStr}</div>
             ${statsHtml}
           </div>
         </label>
@@ -723,6 +805,17 @@ function setupHeroConfigDialog() {
     });
   });
 
+  // Attach Configure requirement links listener
+  listContainer.querySelectorAll('.build-config-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const heroName = link.getAttribute('data-hero-name');
+      const rank = parseInt(link.getAttribute('data-build-rank'), 10);
+      openBuildConfigEditor(heroName, rank);
+    });
+  });
+
   // Bulk selectors
   document.getElementById('hero-bulk-enable-all').addEventListener('click', () => {
     const rows = listContainer.querySelectorAll('.hero-config-row');
@@ -847,3 +940,287 @@ function saveHeroConfig() {
   }
 }
 
+// ============================================================================
+// Custom Requirements Editor (Sliders & Options)
+// ============================================================================
+
+/**
+ * Calculates Fribbels-database defaults for the build settings if custom values do not exist yet.
+ */
+function getBuildConfigDefaults(heroName, rank) {
+  const hero = allHeroes.find(h => h.name === heroName);
+  if (!hero) return null;
+  const build = hero.builds.find(b => b.rank === rank);
+  if (!build) return null;
+  
+  // Calculate priorities from SAV
+  const sav = build.sav || {};
+  const stats = ["atk", "def", "hp", "spd", "cc", "cd", "eff", "res"];
+  let maxSav = 0;
+  stats.forEach(s => {
+    const val = sav[s] || 0;
+    if (val > maxSav) maxSav = val;
+  });
+  
+  const priorities = {};
+  stats.forEach(s => {
+    const val = sav[s] || 0;
+    let prio = 1;
+    if (maxSav > 0) {
+      const ratio = val / maxSav;
+      if (ratio >= 0.6) prio = 3;
+      else if (ratio >= 0.35) prio = 2;
+      else if (ratio >= 0.1) prio = 1;
+      else prio = 0;
+    }
+    priorities[s] = prio;
+  });
+  
+  // Calculate min/max bounds
+  const statRanges = {};
+  stats.forEach(s => {
+    const avg = build.averageStats ? (build.averageStats[s] || 0) : 0;
+    if (avg > 0 && priorities[s] >= 2) {
+      statRanges[s] = { min: avg, max: null };
+    } else {
+      statRanges[s] = { min: null, max: null };
+    }
+  });
+  
+  // Max cap CC to 100
+  if (priorities["cc"] > 0) {
+    if (!statRanges["cc"]) statRanges["cc"] = {};
+    statRanges["cc"].max = 100;
+  }
+  
+  return {
+    priorities,
+    statRanges,
+    sets: [ build.sets || [] ],
+    minQuality: { score: 15.0 }, // default 15% Top %
+    weightMode: "weighted",
+    accessoryMains: ["HealthPercent", "DefensePercent", "EffectResistance", "Speed"]
+  };
+}
+
+/**
+ * Deep merge helper to mix defaults with customized fields
+ */
+function mergeProfiles(defaults, custom) {
+  const merged = JSON.parse(JSON.stringify(defaults));
+  if (!custom) return merged;
+
+  if (custom.priorities) {
+    Object.assign(merged.priorities, custom.priorities);
+  }
+  if (custom.statRanges) {
+    for (let k in custom.statRanges) {
+      if (!merged.statRanges[k]) merged.statRanges[k] = {};
+      Object.assign(merged.statRanges[k], custom.statRanges[k]);
+    }
+  }
+  if (custom.sets) {
+    merged.sets = JSON.parse(JSON.stringify(custom.sets));
+  }
+  if (custom.minQuality) {
+    Object.assign(merged.minQuality, custom.minQuality);
+  }
+  if (custom.weightMode) {
+    merged.weightMode = custom.weightMode;
+  }
+  if (custom.accessoryMains) {
+    merged.accessoryMains = [...custom.accessoryMains];
+  }
+  return merged;
+}
+
+/**
+ * Open dialog and populates requirements form fields
+ */
+function openBuildConfigEditor(heroName, rank) {
+  editingHeroName = heroName;
+  editingBuildRank = rank;
+
+  const defaults = getBuildConfigDefaults(heroName, rank);
+  const saved = (customProfiles[heroName] && customProfiles[heroName][rank]) ? customProfiles[heroName][rank] : null;
+  const config = saved ? mergeProfiles(defaults, saved) : defaults;
+
+  document.getElementById('build-config-title').innerText = `Configure Requirements: ${heroName} - Build #${rank}`;
+
+  // Sliders Priorities
+  const stats = ["atk", "hp", "def", "spd", "cc", "cd", "eff", "res"];
+  stats.forEach(s => {
+    const val = config.priorities[s] !== undefined ? config.priorities[s] : 1;
+    document.getElementById(`prio-${s}`).value = val;
+    document.getElementById(`prio-${s}-val`).innerText = val;
+  });
+
+  // Fit Threshold Top %
+  const threshold = (config.minQuality && config.minQuality.score !== undefined && config.minQuality.score !== null) ? config.minQuality.score : 15;
+  document.getElementById('prio-top').value = threshold;
+  document.getElementById('prio-top-val').innerText = `${threshold}%`;
+
+  // Weight Mode
+  document.getElementById('weight-mode-strict').checked = config.weightMode === "strict";
+
+  // Stat Ranges Inputs
+  stats.forEach(s => {
+    const range = config.statRanges[s] || { min: null, max: null };
+    document.getElementById(`bound-${s}-min`).value = range.min !== null ? range.min : "";
+    document.getElementById(`bound-${s}-max`).value = range.max !== null ? range.max : "";
+  });
+
+  // Accessory Mains Checklist
+  const mainsGrid = document.getElementById('acc-mains-grid');
+  mainsGrid.innerHTML = ACC_MAINS_LIST.map(item => {
+    const checked = config.accessoryMains.includes(item.value) ? 'checked' : '';
+    return `
+      <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:#fff; cursor:pointer;">
+        <input type="checkbox" class="acc-main-checkbox" value="${item.value}" ${checked}>
+        <span>${item.label}</span>
+      </label>
+    `;
+  }).join('');
+
+  // Set combinations array
+  editingSetCombos = JSON.parse(JSON.stringify(config.sets || []));
+  renderSetCombos();
+
+  buildConfigModal.showModal();
+}
+
+/**
+ * Renders set combinations rows
+ */
+function renderSetCombos() {
+  const container = document.getElementById('allowed-sets-container');
+  if (editingSetCombos.length === 0) {
+    container.innerHTML = `<span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">No set constraints. Matches any sets.</span>`;
+    return;
+  }
+
+  container.innerHTML = editingSetCombos.map((combo, idx) => {
+    let active4pc = "None";
+    let active2pc = "None";
+
+    combo.forEach(s => {
+      if (SET_NAMES_4PC.includes(s)) active4pc = s;
+      else if (SET_NAMES_2PC.includes(s)) active2pc = s;
+    });
+
+    const opt4pc = SET_NAMES_4PC.map(s => `<option value="${s}" ${s === active4pc ? 'selected' : ''}>${s}</option>`).join('');
+    const opt2pc = SET_NAMES_2PC.map(s => `<option value="${s}" ${s === active2pc ? 'selected' : ''}>${s}</option>`).join('');
+
+    return `
+      <div class="set-combo-row" style="display:flex; gap:0.25rem; align-items:center;" data-combo-idx="${idx}">
+        <select class="set-select-4pc select-dropdown" style="flex:1; padding:2px; font-size:0.75rem; height: 1.5rem; line-height: 1;">
+          ${opt4pc}
+        </select>
+        <select class="set-select-2pc select-dropdown" style="flex:1; padding:2px; font-size:0.75rem; height: 1.5rem; line-height: 1;">
+          ${opt2pc}
+        </select>
+        <button class="remove-combo-btn" style="background:none; border:none; color:#ef4444; cursor:pointer; font-weight:bold; font-size:1.1rem; padding:0 4px;">&times;</button>
+      </div>
+    `;
+  }).join('');
+
+  // Listeners for changes inside set combo selects
+  container.querySelectorAll('.set-combo-row').forEach(row => {
+    const idx = parseInt(row.getAttribute('data-combo-idx'), 10);
+    const sel4pc = row.querySelector('.set-select-4pc');
+    const sel2pc = row.querySelector('.set-select-2pc');
+
+    const updateCombo = () => {
+      const c4 = sel4pc.value === "None" ? "" : sel4pc.value;
+      const c2 = sel2pc.value === "None" ? "" : sel2pc.value;
+      const res = [];
+      if (c4) res.push(c4);
+      if (c2) res.push(c2);
+      editingSetCombos[idx] = res;
+    };
+
+    sel4pc.addEventListener('change', updateCombo);
+    sel2pc.addEventListener('change', updateCombo);
+
+    row.querySelector('.remove-combo-btn').addEventListener('click', () => {
+      editingSetCombos.splice(idx, 1);
+      renderSetCombos();
+    });
+  });
+}
+
+function handleAddSetCombo() {
+  editingSetCombos.push(["None", "None"]);
+  renderSetCombos();
+}
+
+/**
+ * Resets requirements configuration back to defaults
+ */
+function handleResetBuildConfig() {
+  if (confirm("Reset requirements back to average build defaults?")) {
+    if (customProfiles[editingHeroName]) {
+      delete customProfiles[editingHeroName][editingBuildRank];
+      if (Object.keys(customProfiles[editingHeroName]).length === 0) {
+        delete customProfiles[editingHeroName];
+      }
+      localStorage.setItem('e7_custom_profiles', JSON.stringify(customProfiles));
+    }
+    openBuildConfigEditor(editingHeroName, editingBuildRank);
+  }
+}
+
+/**
+ * Saves build customizations to local storage and updates evaluate response
+ */
+function saveBuildConfig() {
+  if (!editingHeroName || !editingBuildRank) return;
+
+  const priorities = {};
+  const stats = ["atk", "hp", "def", "spd", "cc", "cd", "eff", "res"];
+  stats.forEach(s => {
+    priorities[s] = parseInt(document.getElementById(`prio-${s}`).value, 10);
+  });
+
+  const topThreshold = parseFloat(document.getElementById('prio-top').value);
+  const strictMode = document.getElementById('weight-mode-strict').checked;
+
+  const statRanges = {};
+  stats.forEach(s => {
+    const minVal = document.getElementById(`bound-${s}-min`).value;
+    const maxVal = document.getElementById(`bound-${s}-max`).value;
+
+    statRanges[s] = {
+      min: minVal !== "" ? parseFloat(minVal) : null,
+      max: maxVal !== "" ? parseFloat(maxVal) : null
+    };
+  });
+
+  const accessoryMains = Array.from(document.querySelectorAll('.acc-main-checkbox:checked')).map(el => el.value);
+
+  // Clean empty combos
+  const cleanedCombos = editingSetCombos.filter(combo => combo.length > 0);
+
+  if (!customProfiles[editingHeroName]) {
+    customProfiles[editingHeroName] = {};
+  }
+
+  customProfiles[editingHeroName][editingBuildRank] = {
+    priorities,
+    statRanges,
+    sets: cleanedCombos,
+    minQuality: { score: topThreshold, efficiency: null },
+    weightMode: strictMode ? "strict" : "weighted",
+    accessoryMains
+  };
+
+  localStorage.setItem('e7_custom_profiles', JSON.stringify(customProfiles));
+  buildConfigModal.close();
+
+  // Re-evaluate if gear is loaded
+  if (currentGear) {
+    fetchEvaluatorData(currentGear).then(() => {
+      render();
+    });
+  }
+}

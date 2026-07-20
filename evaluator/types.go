@@ -7,7 +7,8 @@ package main
 //   1. Database input types   (parsed from average_build_stats.json / stats.json)
 //   2. Gear input types       (received from the generator API)
 //   3. API response types     (returned from /api/evaluate)
-//   4. Shared labels / maps
+//   4. New 7-Layer Architecture types (HeroProfile, GearTrace, etc.)
+//   5. Shared labels / maps
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
@@ -80,11 +81,35 @@ type HeroStats struct {
 
 // StatsHero is a single hero entry from stats.json (icon / class metadata).
 type StatsHero struct {
-	Name      string `json:"name"`
-	Icon      string `json:"icon"`
-	Rarity    int    `json:"rarity"`
-	Role      string `json:"role"`
-	Attribute string `json:"attribute"`
+	ID           string           `json:"id"`
+	Name         string           `json:"name"`
+	Icon         string           `json:"icon"`
+	Rarity       int              `json:"rarity"`
+	Role         string           `json:"role"`
+	Attribute    string           `json:"attribute"`
+	SelfDevotion SelfDevotionInfo `json:"self_devotion"`
+	BaseStats    HeroBaseStatsSet `json:"base_stats"`
+}
+
+type SelfDevotionInfo struct {
+	Type   string             `json:"type"`
+	Grades map[string]float64 `json:"grades"`
+}
+
+type HeroBaseStatsSet struct {
+	Lv50 HeroBaseStats `json:"lv50"`
+	Lv60 HeroBaseStats `json:"lv60"`
+}
+
+type HeroBaseStats struct {
+	Atk float64 `json:"atk"`
+	Def float64 `json:"def"`
+	Hp  float64 `json:"hp"`
+	Spd float64 `json:"spd"`
+	Cc  float64 `json:"chc"` // Note: stats.json uses chc/chd
+	Cd  float64 `json:"chd"`
+	Eff float64 `json:"eff"`
+	Res float64 `json:"efr"` // Note: stats.json uses efr
 }
 
 // ---------------------------------------------------------------------------
@@ -93,9 +118,10 @@ type StatsHero struct {
 
 // Substat is one of up to four secondary stats on a gear piece.
 type Substat struct {
-	Type  string  `json:"type"`
-	Value float64 `json:"value"`
-	Rolls int     `json:"rolls"`
+	Type     string  `json:"type"`
+	Value    float64 `json:"value"`
+	Rolls    int     `json:"rolls"`
+	Modified bool    `json:"modified,omitempty"`
 }
 
 // MainStat is the primary stat of the gear piece.
@@ -121,11 +147,14 @@ type Gear struct {
 	Main     MainStat  `json:"main"`
 	Substats []Substat `json:"substats"`
 	Score    GearScore `json:"score"`
+	Reforged bool      `json:"reforged,omitempty"`
 }
 
 type EvaluateRequest struct {
-	Gear           Gear             `json:"gear"`
-	ExcludedBuilds map[string][]int `json:"excludedBuilds"` // HeroName -> list of excluded build ranks (1-indexed)
+	Gear           Gear                           `json:"gear"`
+	ExcludedBuilds map[string][]int               `json:"excludedBuilds"` // HeroName -> list of excluded build ranks (1-indexed)
+	SpeedCheck     string                         `json:"speedCheck,omitempty"`     // "ON" | "OFF" (defaults to ON)
+	CustomProfiles map[string]map[int]HeroProfile `json:"customProfiles,omitempty"` // HeroName -> build rank -> custom profile configurations
 }
 
 // ---------------------------------------------------------------------------
@@ -133,37 +162,25 @@ type EvaluateRequest struct {
 // ---------------------------------------------------------------------------
 
 // EvaluationResponse is the top-level response from /api/evaluate.
-// It is versioned by layer so future layers can be added without breaking
-// existing consumers — Layer 2 fields can simply be appended here.
 type EvaluationResponse struct {
-	GearID string `json:"gearId"`
-	*Layer1Result
-	Layer1 *Layer1Result `json:"layer1"`
-	Layer2 *Layer2Result `json:"layer2,omitempty"`
+	GearID       string          `json:"gearId"`
+	Verdict      string          `json:"verdict"` // Worthy, Sell, Discard, Speed Check
+	SuitedBuilds []L1SuitedBuild `json:"suitedBuilds"`
+	HeroDetails  []L1HeroDetail  `json:"heroDetails"`
+
+	// New 7-Layer Architecture trace & layers
+	Trace  *GearTrace    `json:"trace,omitempty"`
+	Layer1 *Layer1Result `json:"layer1,omitempty"` // kept for structure similarity
 }
 
-// --- Layer 1 types ---
+// --- Legacy UI compatibility types ---
 
 // Layer1Result is the output of the Layer 1 hero-suitability evaluation.
-// It answers: "Which heroes is this piece worth for?"
 type Layer1Result struct {
-	// Verdict is the overall decision for this gear piece.
-	//   "Worthy"      — gear suits at least one hero build
-	//   "Sell"        — gear suits no hero builds
-	//   "Discard"     — gear failed a global pre-filter rule
-	//   "Speed Check" — right-side flat-main piece with speed; decide manually
-	Verdict string `json:"verdict"`
-
-	// GlobalRuleMatched is set when a pre-filter rule short-circuited evaluation.
-	// Empty string when the full hero-by-hero scoring was performed.
-	GlobalRuleMatched string `json:"globalRuleMatched,omitempty"`
-
-	// SuitedBuilds is a flat list of every (hero, build) pair that passed.
-	// Used by the renderer for the compact "suited heroes" tab.
-	SuitedBuilds []L1SuitedBuild `json:"suitedBuilds"`
-
-	// HeroDetails contains per-hero, per-build scoring detail for the detail view.
-	HeroDetails []L1HeroDetail `json:"heroDetails"`
+	Verdict           string          `json:"verdict"`
+	GlobalRuleMatched string          `json:"globalRuleMatched,omitempty"`
+	SuitedBuilds      []L1SuitedBuild `json:"suitedBuilds"`
+	HeroDetails       []L1HeroDetail  `json:"heroDetails"`
 }
 
 // L1SuitedBuild is a compact record of one passing (hero, build) pair.
@@ -188,31 +205,139 @@ type L1HeroDetail struct {
 	Builds    []L1BuildDetail `json:"builds"`
 }
 
-// L1BuildDetail is the per-build scoring result, surfacing the WAS metrics
-// so the UI can display a progress bar and explain the verdict.
+// L1BuildDetail is the per-build scoring result.
 type L1BuildDetail struct {
-	Rank      int            `json:"rank"`
-	Usage     float64        `json:"usage"`
-	Sets      []string       `json:"sets"`
-	Verdict   string         `json:"verdict"`   // "Worthy" or "Sell"
-	WAS       float64        `json:"was"`        // raw Weighted Alignment Score (0–max_weight)
-	WASPct    float64        `json:"wasPct"`     // WAS as % of threshold; >100 = passes
-	Threshold float64        `json:"threshold"`  // dynamic pass threshold for this build
-	MissingCore int          `json:"missingCore"` // count of core stats absent from gear
-	Landmines []L1Landmine   `json:"landmines"`
-	Sav       Sav            `json:"sav"` // raw SAV kept for the stat-grid UI
+	Rank        int          `json:"rank"`
+	Usage       float64      `json:"usage"`
+	Sets        []string     `json:"sets"`
+	Verdict     string       `json:"verdict"` // "Worthy" or "Sell"
+	WAS         float64      `json:"was"`     // raw Weighted Alignment Score (0–max_weight)
+	WASPct      float64      `json:"wasPct"`  // WAS as % of threshold; >100 = passes
+	Threshold   float64      `json:"threshold"`
+	MissingCore int          `json:"missingCore"`
+	Landmines   []L1Landmine `json:"landmines"`
+	Sav         Sav          `json:"sav"`
 }
 
 // L1Landmine is a gear substat that is low-priority for a specific hero build.
-// Displayed in the UI to explain why a stat "doesn't count" toward suitability.
 type L1Landmine struct {
-	StatType string  `json:"statType"` // gear stat type key
-	Label    string  `json:"label"`    // human-readable name
-	Weight   float64 `json:"weight"`   // hero's normalized priority weight (%) for this stat
+	StatType string  `json:"statType"`
+	Label    string  `json:"label"`
+	Weight   float64 `json:"weight"`
 }
 
 // ---------------------------------------------------------------------------
-// 4. Shared labels
+// 4. New 7-Layer Architecture types
+// ---------------------------------------------------------------------------
+
+type StatBounds struct {
+	Min *float64 `json:"min"`
+	Max *float64 `json:"max"`
+}
+
+type MinQuality struct {
+	Score      *float64 `json:"score"`
+	Efficiency *float64 `json:"efficiency"`
+}
+
+// HeroProfile defines the rules/priorities used for evaluating a gear piece for a hero build.
+type HeroProfile struct {
+	HeroID         string                `json:"heroId"`
+	HeroName       string                `json:"heroName"`
+	BuildRank      int                   `json:"buildRank"`
+	Selected       bool                  `json:"selected"`
+	StatRanges     map[string]StatBounds `json:"statRanges"`
+	Sets           [][]string            `json:"sets"` // list of acceptable set combinations
+	Priorities     map[string]int        `json:"priorities"`
+	MinQuality     *MinQuality           `json:"minQuality"`
+	WeightMode     string                `json:"weightMode"` // "strict" | "weighted"
+	AccessoryMains []string              `json:"accessoryMains"`
+	OriginalSav    Sav                   `json:"-"`
+}
+
+// Traces per layer
+type L0Trace struct {
+	ParseConfidence    float64        `json:"parseConfidence"`
+	RollReconstruction map[string]int `json:"rollReconstruction"` // statType -> reconstructed rolls
+	Ambiguities        []string       `json:"ambiguities"`
+}
+
+type L1Trace struct {
+	RulesRun   []string `json:"rulesRun"`
+	Violations []string `json:"violations"`
+}
+
+type L2Trace struct {
+	Rule   string `json:"rule"`
+	Fired  bool   `json:"fired"`
+	Detail string `json:"detail"`
+}
+
+type L3Trace struct {
+	Toggle     string  `json:"toggle"` // "ON" | "OFF"
+	Tagged     bool    `json:"tagged"` // tagged for SPEED_VAULT
+	SpeedValue float64 `json:"speedValue"`
+}
+
+type L4HeroGateResult struct {
+	HeroName    string  `json:"heroName"`
+	BuildRank   int     `json:"buildRank"`
+	GateResults [4]bool `json:"gateResults"` // index 0: Set, 1: Main, 2: Range, 3: Fit Score
+	FitScore    float64 `json:"fitScore"`
+	Threshold   float64 `json:"threshold"`
+	Pass        bool    `json:"pass"`
+}
+
+type L4Trace struct {
+	PerHero []L4HeroGateResult `json:"perHero"`
+}
+
+type ProjectionScenario struct {
+	ScenarioName string             `json:"scenarioName"` // "expected", "best", "worst"
+	Substats     []Substat          `json:"substats"`     // projected substats at +15
+	Reforged     []Substat          `json:"reforged"`     // projected reforge values
+	Score        float64            `json:"score"`        // WSS score
+	HeroScores   map[string]float64 `json:"heroScores"`   // hero_rank -> fit score
+}
+
+type L5Trace struct {
+	CurrentWSS       float64              `json:"currentWss"`
+	CurrentHeroScore map[string]float64   `json:"currentHeroScore"` // hero_rank -> fit score
+	Scenarios        []ProjectionScenario `json:"scenarios"`
+}
+
+type SalvagePlan struct {
+	DeadSubStat   string  `json:"deadSubStat"`
+	TargetStat    string  `json:"targetStat"`
+	ExpectedValue float64 `json:"expectedValue"`
+	RescoredFit   float64 `json:"rescoredFit"`
+}
+
+type L6Trace struct {
+	Verdict       string       `json:"verdict"` // KEEP_ENHANCE, SALVAGE_MOD, SPEED_VAULT, SELL_EXTRACT
+	WinnerHero    string       `json:"winnerHero"`
+	WinnerBuild   int          `json:"winnerBuild"`
+	RunnerUps     []string     `json:"runnerUps"` // list of "Hero_Name (Build X)"
+	SalvageDetail *SalvagePlan `json:"salvageDetail,omitempty"`
+}
+
+type GearTrace struct {
+	GearID          string    `json:"gearId"`
+	TableVersion    string    `json:"tableVersion"`
+	SpeedCheckState string    `json:"speedCheckState"`
+	L0              L0Trace   `json:"l0"`
+	L1              L1Trace   `json:"l1"`
+	L2              L2Trace   `json:"l2"`
+	L3              L3Trace   `json:"l3"`
+	L4              L4Trace   `json:"l4"`
+	L5              L5Trace   `json:"l5"`
+	L6              L6Trace   `json:"l6"`
+	Verdict         string    `json:"verdict"`
+	ReasonCodes     []string  `json:"reasonCodes"`
+}
+
+// ---------------------------------------------------------------------------
+// 5. Shared labels
 // ---------------------------------------------------------------------------
 
 // STAT_LABELS maps internal stat type keys to human-readable display names.

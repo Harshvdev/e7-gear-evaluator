@@ -1424,3 +1424,246 @@ footer {
   opacity: 0.5;
 }
 
+/* ==========================================================================
+   7-Layer Pipeline Trace & Verdicts Visual Styles
+   ========================================================================== */
+
+/* L6 Verdict Badges */
+.verdict-keep-enhance {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.verdict-salvage-mod {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.verdict-speed-vault {
+  background-color: rgba(139, 92, 246, 0.15);
+  color: #8b5cf6;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.verdict-sell-extract {
+  background-color: rgba(100, 116, 139, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+/* Timeline Layout */
+.trace-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1rem 0;
+  margin-top: 1rem;
+}
+
+.trace-step {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.trace-step:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.trace-step-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  user-select: none;
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.trace-step-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.trace-step-number {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 900;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.trace-step-name {
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.trace-step-status {
+  font-family: var(--font-display);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+}
+
+.status-pass {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.status-fail {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.status-neutral {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+}
+
+.status-tag {
+  background-color: rgba(139, 92, 246, 0.1);
+  color: #8b5cf6;
+}
+
+.trace-step-body {
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* Detail Tables / Lists inside Step Trace */
+.trace-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.trace-detail-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.trace-detail-label {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.trace-detail-val {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: #fff;
+}
+
+/* Projection Chart Elements */
+.projection-envelope-card {
+  margin-top: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.01);
+  padding: 0.75rem;
+}
+
+.projection-title {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--primary);
+  margin-bottom: 0.5rem;
+}
+
+.projection-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0.375rem 0;
+}
+
+.projection-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.projection-val-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.projection-val {
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+.projection-expected {
+  color: #f59e0b;
+}
+
+.projection-best {
+  color: #10b981;
+}
+
+.projection-worst {
+  color: #ef4444;
+}
+
+/* Salvage Modification Stone Suggestions */
+.salvage-plan-card {
+  margin-top: 1rem;
+  background: rgba(245, 158, 11, 0.03);
+  border: 1px dashed rgba(245, 158, 11, 0.3);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.salvage-plan-title {
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #f59e0b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.salvage-plan-body {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.salvage-stat-highlight {
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.0625rem 0.25rem;
+  border-radius: 0.25rem;
+}
+
+

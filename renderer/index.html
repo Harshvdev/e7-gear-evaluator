@@ -112,6 +112,15 @@
         <div class="pills-grid" id="sets-pills-grid"></div>
       </div>
 
+      <!-- Speed Check Toggle -->
+      <div class="form-group" style="margin-top: 1rem;">
+        <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+          <span>Global Speed Check Vault</span>
+          <input type="checkbox" id="speed-check-toggle" checked style="width: 1.25rem; height: 1.25rem; accent-color: var(--primary);">
+        </label>
+        <span style="font-size: 0.6875rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">When enabled, any gear with a Speed substat will bypass normal hero build checks and be vaulted.</span>
+      </div>
+
       <!-- Divider line -->
       <hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.08); margin: 1.5rem 0;">
 
@@ -196,6 +205,165 @@
 
     <div class="dialog-footer">
       <button id="hero-config-save-btn" class="btn-primary button-full">Save Configuration</button>
+    </div>
+  </dialog>
+
+  <!-- Build Custom Requirements Modal -->
+  <dialog id="build-config-modal" style="max-width: 960px; width: 95%;">
+    <div class="dialog-header">
+      <h2>Configure Build Requirements</h2>
+      <button id="build-config-close-btn" class="dialog-close-x">&times;</button>
+    </div>
+    <div class="dialog-body" style="padding: 1rem 1.5rem;">
+      <h4 id="build-config-title" style="margin: 0 0 1.5rem 0; color: var(--primary); font-family: var(--font-display); font-size: 1rem; font-weight: 700; text-transform: uppercase;">Hero Build Settings</h4>
+      
+      <div class="build-config-columns" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem;">
+        
+        <!-- Column 1: Substat Priorities & Fit -->
+        <div>
+          <h3 style="font-family: var(--font-display); font-size: 0.875rem; font-weight: 700; color: #fff; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Substat Priorities (0-3)</h3>
+          
+          <div class="slider-group" style="margin-bottom: 0.75rem;">
+            <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
+              <span>Attack</span> <strong id="prio-atk-val">1</strong>
+            </label>
+            <input type="range" id="prio-atk" min="0" max="3" value="1" step="1" style="width:100%; accent-color: var(--primary);">
+          </div>
+          <div class="slider-group" style="margin-bottom: 0.75rem;">
+            <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
+              <span>HP</span> <strong id="prio-hp-val">1</strong>
+            </label>
+            <input type="range" id="prio-hp" min="0" max="3" value="1" step="1" style="width:100%; accent-color: var(--primary);">
+          </div>
+          <div class="slider-group" style="margin-bottom: 0.75rem;">
+            <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
+              <span>Defense</span> <strong id="prio-def-val">1</strong>
+            </label>
+            <input type="range" id="prio-def" min="0" max="3" value="1" step="1" style="width:100%; accent-color: var(--primary);">
+          </div>
+          <div class="slider-group" style="margin-bottom: 0.75rem;">
+            <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
+              <span>Speed</span> <strong id="prio-spd-val">1</strong>
+            </label>
+            <input type="range" id="prio-spd" min="0" max="3" value="1" step="1" style="width:100%; accent-color: var(--primary);">
+          </div>
+          <div class="slider-group" style="margin-bottom: 0.75rem;">
+            <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
+              <span>Crit Rate</span> <strong id="prio-cc-val">1</strong>
+            </label>
+            <input type="range" id="prio-cc" min="0" max="3" value="1" step="1" style="width:100%; accent-color: var(--primary);">
+          </div>
+          <div class="slider-group" style="margin-bottom: 0.75rem;">
+            <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
+              <span>Crit Damage</span> <strong id="prio-cd-val">1</strong>
+            </label>
+            <input type="range" id="prio-cd" min="0" max="3" value="1" step="1" style="width:100%; accent-color: var(--primary);">
+          </div>
+          <div class="slider-group" style="margin-bottom: 0.75rem;">
+            <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
+              <span>Effectiveness</span> <strong id="prio-eff-val">1</strong>
+            </label>
+            <input type="range" id="prio-eff" min="0" max="3" value="1" step="1" style="width:100%; accent-color: var(--primary);">
+          </div>
+          <div class="slider-group" style="margin-bottom: 0.75rem;">
+            <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
+              <span>Resistance</span> <strong id="prio-res-val">1</strong>
+            </label>
+            <input type="range" id="prio-res" min="0" max="3" value="1" step="1" style="width:100%; accent-color: var(--primary);">
+          </div>
+          
+          <div class="slider-group" style="margin-top: 1.5rem; margin-bottom: 0.75rem;">
+            <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:#fff; font-weight:700;">
+              <span>Fit Threshold (Top % rank)</span> <strong id="prio-top-val">15%</strong>
+            </label>
+            <input type="range" id="prio-top" min="1" max="100" value="15" step="1" style="width:100%; accent-color: var(--primary);">
+          </div>
+          <div class="form-group" style="margin-top: 1rem;">
+            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.75rem; cursor:pointer;">
+              <input type="checkbox" id="weight-mode-strict" style="width:1rem; height:1rem; accent-color:var(--primary);">
+              <span>Strict Weight Mode (Prio-3 stats are mandatory)</span>
+            </label>
+          </div>
+        </div>
+        
+        <!-- Column 2: Stat Filters (Min/Max) -->
+        <div>
+          <h3 style="font-family: var(--font-display); font-size: 0.875rem; font-weight: 700; color: #fff; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Stat Filters (Final Targets)</h3>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">
+            <span>Stat</span> <span>Min</span> <span>Max</span>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
+            <span style="font-size:0.75rem; color: #fff;">Attack</span>
+            <input type="number" id="bound-atk-min" placeholder="Min" class="eval-search-input" style="margin:0; font-size:0.75rem; padding:0.25rem 0.5rem;">
+            <input type="number" id="bound-atk-max" placeholder="Max" class="eval-search-input" style="margin:0; font-size:0.75rem; padding:0.25rem 0.5rem;">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
+            <span style="font-size:0.75rem; color: #fff;">Defense</span>
+            <input type="number" id="bound-def-min" placeholder="Min" class="eval-search-input" style="margin:0; font-size:0.75rem; padding:0.25rem 0.5rem;">
+            <input type="number" id="bound-def-max" placeholder="Max" class="eval-search-input" style="margin:0; font-size:0.75rem; padding:0.25rem 0.5rem;">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
+            <span style="font-size:0.75rem; color: #fff;">HP</span>
+            <input type="number" id="bound-hp-min" placeholder="Min" class="eval-search-input" style="margin:0; font-size:0.75rem; padding:0.25rem 0.5rem;">
+            <input type="number" id="bound-hp-max" placeholder="Max" class="eval-search-input" style="margin:0; font-size:0.75rem; padding:0.25rem 0.5rem;">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
+            <span style="font-size:0.75rem; color: #fff;">Speed</span>
+            <input type="number" id="bound-spd-min" placeholder="Min" class="eval-search-input" style="margin:0; font-size:0.75rem; padding:0.25rem 0.5rem;">
+            <input type="number" id="bound-spd-max" placeholder="Max" class="eval-search-input" style="margin:0; font-size:0.75rem; padding:0.25rem 0.5rem;">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
+            <span style="font-size:0.75rem; color: #fff;">Crit Rate</span>
+            <input type="number" id="bound-cc-min" placeholder="Min" class="eval-search-input" style="margin:0; font-size:0.75rem; padding:0.25rem 0.5rem;">
+            <input type="number" id="bound-cc-max" placeholder="Max" class="eval-search-input" style="margin:0; font-size:0.75rem; padding:0.25rem 0.5rem;">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
+            <span style="font-size:0.75rem; color: #fff;">Crit Dmg</span>
+            <input type="number" id="bound-cd-min" placeholder="Min" class="eval-search-input" style="margin:0; font-size:0.75rem; padding:0.25rem 0.5rem;">
+            <input type="number" id="bound-cd-max" placeholder="Max" class="eval-search-input" style="margin:0; font-size:0.75rem; padding:0.25rem 0.5rem;">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
+            <span style="font-size:0.75rem; color: #fff;">Effectiveness</span>
+            <input type="number" id="bound-eff-min" placeholder="Min" class="eval-search-input" style="margin:0; font-size:0.75rem; padding:0.25rem 0.5rem;">
+            <input type="number" id="bound-eff-max" placeholder="Max" class="eval-search-input" style="margin:0; font-size:0.75rem; padding:0.25rem 0.5rem;">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
+            <span style="font-size:0.75rem; color: #fff;">Resistance</span>
+            <input type="number" id="bound-res-min" placeholder="Min" class="eval-search-input" style="margin:0; font-size:0.75rem; padding:0.25rem 0.5rem;">
+            <input type="number" id="bound-res-max" placeholder="Max" class="eval-search-input" style="margin:0; font-size:0.75rem; padding:0.25rem 0.5rem;">
+          </div>
+        </div>
+        
+        <!-- Column 3: Sets & Accessory Mains -->
+        <div>
+          <h3 style="font-family: var(--font-display); font-size: 0.875rem; font-weight: 700; color: #fff; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Accessory Main Stats & Sets</h3>
+          
+          <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.5rem;">Accessory Main Stats Allowed</label>
+            <div id="acc-mains-grid" style="display:grid; grid-template-columns:1fr; gap:0.375rem; max-height: 120px; overflow-y: auto; background:rgba(0,0,0,0.15); padding:0.5rem; border-radius:0.375rem; border: 1px solid rgba(255,255,255,0.05);">
+              <!-- Accessory mains list -->
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.5rem;">Allowed Sets Combinations</label>
+            <div id="allowed-sets-container" style="max-height: 180px; overflow-y: auto; background:rgba(0,0,0,0.15); padding:0.5rem; border-radius:0.375rem; display:flex; flex-direction:column; gap:0.375rem; border: 1px solid rgba(255,255,255,0.05);">
+              <!-- List of active sets -->
+            </div>
+            <button id="add-set-combo-btn" class="btn-secondary btn-compact" style="margin-top:0.5rem; width:100%; border-style: dashed;">+ Add Set Combination</button>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+    <div class="dialog-footer" style="display:flex; justify-content:space-between; gap:1rem; padding: 1rem 1.5rem;">
+      <button id="build-config-reset-btn" class="btn-secondary">Reset to Default</button>
+      <div style="display:flex; gap:1rem;">
+        <button id="build-config-cancel-btn" class="btn-secondary">Cancel</button>
+        <button id="build-config-save-btn" class="btn-primary">Apply Build Settings</button>
+      </div>
     </div>
   </dialog>
 
