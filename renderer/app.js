@@ -61,8 +61,8 @@ const buildConfigResetBtn = document.getElementById('build-config-reset-btn');
 const addSetComboBtn = document.getElementById('add-set-combo-btn');
 
 // Lists for Custom Requirements Editor
-const SET_NAMES_4PC = ["Speed", "Attack", "Destruction", "Lifesteal", "Counter", "Rage", "Revenge", "Protection", "None"];
-const SET_NAMES_2PC = ["Health", "Defense", "Critical", "Hit", "Resistance", "Immunity", "Penetration", "Torrent", "Injury", "Unity", "None"];
+const SET_NAMES_4PC = ["Speed", "Attack", "Destruction", "Lifesteal", "Counter", "Rage", "Revenge", "Protection", "Reversal", "Riposte", "Warfare", "Injury", "Weakening", "None"];
+const SET_NAMES_2PC = ["Health", "Defense", "Critical", "Hit", "Resistance", "Immunity", "Penetration", "Torrent", "Unity", "Pursuit", "Fervor", "None"];
 
 const ACC_MAINS_LIST = [
   { value: "HealthPercent", label: "Health %" },
@@ -98,6 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Event Listeners - Modal
   dialogCloseBtn.addEventListener('click', () => configDialog.close());
   dialogSaveBtn.addEventListener('click', async () => {
+    saveAppSettings();
     configDialog.close();
     if (currentGear) {
       await fetchEvaluatorData(currentGear);
@@ -173,15 +174,76 @@ async function fetchConfig() {
 }
 
 /**
+ * Loads saved generator & evaluator settings from localStorage
+ */
+function loadAppSettings() {
+  const stored = localStorage.getItem('e7_app_settings');
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored);
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Saves current generator & evaluator settings to localStorage
+ */
+function saveAppSettings() {
+  const rarities = Array.from(document.querySelectorAll('input[name="rarities"]:checked')).map(el => el.value);
+  const levels = Array.from(document.querySelectorAll('input[name="levels"]:checked')).map(el => parseInt(el.value, 10));
+  const slots = Array.from(document.querySelectorAll('input[name="slots"]:checked')).map(el => el.value);
+  const mainTypes = Array.from(document.querySelectorAll('input[name="mainTypes"]:checked')).map(el => el.value);
+  const sets = Array.from(document.querySelectorAll('input[name="sets"]:checked')).map(el => el.value);
+
+  const speedCheckEl = document.getElementById('speed-check-toggle');
+  const speedCheck = speedCheckEl ? speedCheckEl.checked : true;
+
+  const modBudgetEl = document.getElementById('mod-budget-select');
+  const modBudget = modBudgetEl ? modBudgetEl.value : 'none';
+
+  const reforgeBudgetEl = document.getElementById('reforge-budget-select');
+  const reforgeBudget = reforgeBudgetEl ? reforgeBudgetEl.value : 'none';
+
+  const heroRoles = Array.from(document.querySelectorAll('input[name="heroRoles"]:checked')).map(el => el.value);
+  const heroStars = Array.from(document.querySelectorAll('input[name="heroStars"]:checked')).map(el => parseInt(el.value, 10));
+  const heroElements = Array.from(document.querySelectorAll('input[name="heroElements"]:checked')).map(el => el.value);
+
+  const settings = {
+    rarities,
+    levels,
+    slots,
+    mainTypes,
+    sets,
+    speedCheck,
+    modBudget,
+    reforgeBudget,
+    heroRoles,
+    heroStars,
+    heroElements
+  };
+
+  localStorage.setItem('e7_app_settings', JSON.stringify(settings));
+}
+
+/**
  * Dynamically builds the multi-select checkbox checklists in the settings dialog
  */
 function setupDialogOptions() {
   if (!apiConfig) return;
 
+  const saved = loadAppSettings();
+
+  // Helper to check if a value was checked in saved settings or default to true
+  const isChecked = (category, val) => {
+    if (!saved || !Array.isArray(saved[category])) return true;
+    return saved[category].includes(val);
+  };
+
   // Rarities Checkboxes
   raritiesPillsGrid.innerHTML = ['Epic', 'Heroic'].map(rarity => `
     <label class="check-pill">
-      <input type="checkbox" name="rarities" value="${rarity}" checked>
+      <input type="checkbox" name="rarities" value="${rarity}" ${isChecked('rarities', rarity) ? 'checked' : ''}>
       <span>${rarity}</span>
     </label>
   `).join('');
@@ -189,7 +251,7 @@ function setupDialogOptions() {
   // Levels Checkboxes
   levelsPillsGrid.innerHTML = [85, 88].map(lvl => `
     <label class="check-pill">
-      <input type="checkbox" name="levels" value="${lvl}" checked>
+      <input type="checkbox" name="levels" value="${lvl}" ${isChecked('levels', lvl) ? 'checked' : ''}>
       <span>Lv. ${lvl}</span>
     </label>
   `).join('');
@@ -197,7 +259,7 @@ function setupDialogOptions() {
   // Slots Checkboxes
   slotsPillsGrid.innerHTML = apiConfig.slots.map(slot => `
     <label class="check-pill">
-      <input type="checkbox" name="slots" value="${slot}" checked>
+      <input type="checkbox" name="slots" value="${slot}" ${isChecked('slots', slot) ? 'checked' : ''}>
       <span>${slot}</span>
     </label>
   `).join('');
@@ -205,7 +267,7 @@ function setupDialogOptions() {
   // Main Stats Checkboxes
   mainsPillsGrid.innerHTML = apiConfig.flexibleMainStats.map(type => `
     <label class="check-pill">
-      <input type="checkbox" name="mainTypes" value="${type}" checked>
+      <input type="checkbox" name="mainTypes" value="${type}" ${isChecked('mainTypes', type) ? 'checked' : ''}>
       <span>${apiConfig.statLabels[type] || type}</span>
     </label>
   `).join('');
@@ -213,7 +275,7 @@ function setupDialogOptions() {
   // Sets Checkboxes
   setsPillsGrid.innerHTML = apiConfig.sets.map(setKey => `
     <label class="check-pill">
-      <input type="checkbox" name="sets" value="${setKey}" checked>
+      <input type="checkbox" name="sets" value="${setKey}" ${isChecked('sets', setKey) ? 'checked' : ''}>
       <span>${apiConfig.setLabels[setKey] || setKey.replace('Set', '')}</span>
     </label>
   `).join('');
@@ -229,7 +291,7 @@ function setupDialogOptions() {
   ];
   document.getElementById('hero-roles-pills-grid').innerHTML = roles.map(role => `
     <label class="check-pill">
-      <input type="checkbox" name="heroRoles" value="${role.value}" checked>
+      <input type="checkbox" name="heroRoles" value="${role.value}" ${isChecked('heroRoles', role.value) ? 'checked' : ''}>
       <span>${role.label}</span>
     </label>
   `).join('');
@@ -242,7 +304,7 @@ function setupDialogOptions() {
   ];
   document.getElementById('hero-stars-pills-grid').innerHTML = stars.map(star => `
     <label class="check-pill">
-      <input type="checkbox" name="heroStars" value="${star.value}" checked>
+      <input type="checkbox" name="heroStars" value="${star.value}" ${isChecked('heroStars', parseInt(star.value, 10)) ? 'checked' : ''}>
       <span>${star.label}</span>
     </label>
   `).join('');
@@ -257,10 +319,28 @@ function setupDialogOptions() {
   ];
   document.getElementById('hero-elements-pills-grid').innerHTML = elements.map(elem => `
     <label class="check-pill">
-      <input type="checkbox" name="heroElements" value="${elem.value}" checked>
+      <input type="checkbox" name="heroElements" value="${elem.value}" ${isChecked('heroElements', elem.value) ? 'checked' : ''}>
       <span>${elem.label}</span>
     </label>
   `).join('');
+
+  // Restore non-pill controls (Speed Check toggle, Mod Budget, Reforge Budget)
+  if (saved) {
+    const speedCheckEl = document.getElementById('speed-check-toggle');
+    if (speedCheckEl && typeof saved.speedCheck === 'boolean') {
+      speedCheckEl.checked = saved.speedCheck;
+    }
+
+    const modBudgetEl = document.getElementById('mod-budget-select');
+    if (modBudgetEl && saved.modBudget) {
+      modBudgetEl.value = saved.modBudget;
+    }
+
+    const reforgeBudgetEl = document.getElementById('reforge-budget-select');
+    if (reforgeBudgetEl && saved.reforgeBudget) {
+      reforgeBudgetEl.value = saved.reforgeBudget;
+    }
+  }
 
   // Attach change validation listeners
   document.querySelectorAll('input[name="rarities"]').forEach(el => {

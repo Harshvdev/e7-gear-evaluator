@@ -41,6 +41,9 @@ export const SET_BY_INGAME_CODE: Record<string, string> = {
   set_riposte: "Riposte",
   // Spec-provided example mapping.
   set_opener: "Warfare",
+  set_chase: "Pursuit",
+  set_debuff: "Weakening",
+  set_zeal: "Fervor",
 };
 
 /**
@@ -68,6 +71,10 @@ export const SET_BY_IMAGE_STEM: Record<string, string> = {
   settorrent: "Torrent",
   setrevenant: "Reversal",
   setriposte: "Riposte",
+  setwarfare: "Warfare",
+  setpursuit: "Pursuit",
+  setweakening: "Weakening",
+  setfervor: "Fervor",
 };
 
 /** Reverse-lookup helper: official name -> ingame code (useful for debugging). */

@@ -20,6 +20,20 @@ func normalizeSetName(s string) string {
 		return "critical"
 	case "cdmg", "crit damage", "crit dmg", "destruction":
 		return "destruction"
+	case "pen", "penetrate", "penetration":
+		return "penetration"
+	case "protect", "shield", "protection":
+		return "protection"
+	case "revenant", "reversal":
+		return "reversal"
+	case "opener", "warfare":
+		return "warfare"
+	case "chase", "pursuit":
+		return "pursuit"
+	case "debuff", "weakening":
+		return "weakening"
+	case "zeal", "fervor":
+		return "fervor"
 	default:
 		return lower
 	}
