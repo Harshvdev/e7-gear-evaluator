@@ -175,11 +175,12 @@ function renderList() {
 
 	// Best WAS% across all builds of a hero (higher = more aligned)
 	const getBestWasPct = (hero) => {
-		let best = 0;
+		let best = -999;
 		hero.builds.forEach(b => {
-			if ((b.wasPct || 0) > best) best = b.wasPct;
+			const val = typeof b.wasPct === 'number' ? b.wasPct : -999;
+			if (val > best) best = val;
 		});
-		return best;
+		return best === -999 ? 0 : best;
 	};
 
 	if (activeTab === 'suited') {

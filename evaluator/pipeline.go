@@ -176,11 +176,8 @@ func RunEvaluationPipeline(
 			buildVerdict = "Worthy"
 		}
 
-		// Calculate WAS Pct
-		wasPct := 0.0
-		if l4Res.Threshold > 0 {
-			wasPct = math.Round((l4Res.FitScore/l4Res.Threshold)*1000) / 10
-		}
+		// Calculate WAS Pct (mapped to clamped FitPct in [-100, +100] per Q-E7-Architecture T-CLAMP)
+		wasPct := math.Round(l4Res.FitPct*10) / 10
 
 		// Missing Core
 		missingCore := 0

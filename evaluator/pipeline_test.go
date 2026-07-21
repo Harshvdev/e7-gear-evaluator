@@ -740,3 +740,59 @@ func TestValidationCase_V5_ReforgeScarcity(t *testing.T) {
 	}
 }
 
+func TestValidationCase_ANTI_INFL_1_BossArunka(t *testing.T) {
+	// Anti-fixture ANTI-INFL-1: Counter-set Heroic Armor, +15, main flat Def 310,
+	// subs Def% 22 (3 rolls), Spd 3 (1 roll), flat HP 336 (2 rolls), CC 10% (2 rolls - unlocked at +12, enhanced at +15).
+	gear := Gear{
+		Slot:    "Armor",
+		Level:   85,
+		Rarity:  "Heroic",
+		Enhance: 15,
+		Set:     "Counter",
+		Main:    MainStat{Type: "Defense", Value: 310.0},
+		Substats: []Substat{
+			{Type: "DefensePercent", Value: 22.0, Rolls: 3},
+			{Type: "Speed", Value: 3.0, Rolls: 1},
+			{Type: "Health", Value: 336.0, Rolls: 2},
+			{Type: "CritHitChancePercent", Value: 10.0, Rolls: 2}, // Harmful/wasted for Boss Arunka
+		},
+	}
+
+	// Boss Arunka profile: HP +4, Def +5, Spd +1, CC -2, CD -2, Atk -3
+	profile := HeroProfile{
+		HeroID:     "Boss_Arunka_1",
+		HeroName:   "Boss Arunka",
+		BuildRank:  1,
+		Selected:   true,
+		RosterTier: "primary",
+		Priorities: map[string]int{
+			"def": 5, "hp": 4, "spd": 1, "cc": -2, "cd": -2, "atk": -3, "eff": 1, "res": 0,
+		},
+		WeightMode: "weighted",
+	}
+
+	baseStats := HeroBaseStats{Atk: 950, Def: 700, Hp: 6200, Spd: 105}
+
+	l4Res := EvaluateLayer4(gear, profile, baseStats)
+	l5Res := EvaluateLayer5(gear, profile, baseStats)
+
+	// 1. Verify fitPct is strictly clamped in [-100, +100] per T-CLAMP & T-DENOM
+	if l4Res.FitPct > 100.0 || l4Res.FitPct < -100.0 {
+		t.Errorf("T-CLAMP violation: fitPct %.2f is outside [-100, +100]!", l4Res.FitPct)
+	}
+
+	// 2. Verify that 2 rolls in negative priority CC (Prio -2) trigger Hard Cap C1 failure (wasted > 1)
+	if l5Res.StopCard == nil {
+		t.Fatalf("Expected StopCard to be emitted at +15")
+	}
+
+	if l5Res.StopCard.HardCaps.C1MissBudget {
+		t.Errorf("Expected Hard Cap C1 (MISS_BUDGET) to FAIL due to 2 rolls in negative-priority Crit Chance (wasted > 1)")
+	}
+
+	if l5Res.StopCard.Recommended != "STOP" {
+		t.Errorf("Expected StopCard recommendation to be STOP, got: %s", l5Res.StopCard.Recommended)
+	}
+}
+
+

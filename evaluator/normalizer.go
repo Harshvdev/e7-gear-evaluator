@@ -23,6 +23,70 @@ func GetPriorityWeight(prio int) float64 {
 	return 0.0
 }
 
+// GetSingleRollQuality calculates quality q(s,v) in [0, 1] per Q-E7-Architecture §6
+func GetSingleRollQuality(statType string, value float64, level int, rarity string) float64 {
+	rangesLvl, ok := SubstatRollRanges[level]
+	if !ok {
+		level = 85
+		rangesLvl = SubstatRollRanges[85]
+	}
+	rarityKey := "Epic"
+	if strings.EqualFold(rarity, "Heroic") {
+		rarityKey = "Heroic"
+	}
+	ranges, ok := rangesLvl[rarityKey]
+	if !ok {
+		return 0.5
+	}
+	rBounds, ok := ranges[statType]
+	if !ok {
+		return 0.5
+	}
+	rmin, rmax := rBounds[0], rBounds[1]
+	if rmax <= rmin {
+		return 0.5
+	}
+	q := (value - rmin) / (rmax - rmin)
+	if q > 1.0 {
+		return 1.0
+	} else if q < 0.0 {
+		return 0.0
+	}
+	return q
+}
+
+// GetStepValue calculates single-step value = w(s) * q(s,v) per Q-E7-Architecture §6
+func GetStepValue(statType string, value float64, prio int, level int, rarity string) float64 {
+	w := GetPriorityWeight(prio)
+	q := GetSingleRollQuality(statType, value, level, rarity)
+	return w * q
+}
+
+// ClassifyStep evaluates step class (GOOD, NEUTRAL, WASTED, HARM, MISS) per Q-E7-Architecture §6
+func ClassifyStep(mode string, statType string, delta float64, prio int, level int, rarity string) string {
+	if strings.EqualFold(mode, "SPEED") {
+		if NormalizeStatType(statType) == "Speed" {
+			return "GOOD"
+		}
+		return "MISS"
+	}
+
+	w := GetPriorityWeight(prio)
+	q := GetSingleRollQuality(statType, delta, level, rarity)
+	stepVal := w * q
+
+	if w < 0 {
+		return "HARM"
+	}
+	if (w <= 1.0 && q <= 0.25) || (stepVal <= 0 && w <= 1.0) {
+		return "WASTED"
+	}
+	if stepVal >= 1.5 {
+		return "GOOD"
+	}
+	return "NEUTRAL"
+}
+
 // NormalizeStatValue converts any stat value (flat, speed, critical) into the
 // "percent-equivalent" space for a specific hero's base stats.
 func NormalizeStatValue(statType string, value float64, baseStats HeroBaseStats) float64 {

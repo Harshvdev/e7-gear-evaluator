@@ -118,10 +118,18 @@ type HeroBaseStats struct {
 
 // Substat is one of up to four secondary stats on a gear piece.
 type Substat struct {
-	Type     string  `json:"type"`
-	Value    float64 `json:"value"`
-	Rolls    int     `json:"rolls"`
-	Modified bool    `json:"modified,omitempty"`
+	Type       string    `json:"type"`
+	Value      float64   `json:"value"`
+	Rolls      int       `json:"rolls"`
+	RollValues []float64 `json:"rollValues,omitempty"`
+	Modified   bool      `json:"modified,omitempty"`
+}
+
+// StepLogEntry tracks roll histories at +3, +6, +9, +12, +15
+type StepLogEntry struct {
+	At       int     `json:"at"`       // 3, 6, 9, 12, 15
+	SubIndex int     `json:"subIndex"` // 0, 1, 2, 3
+	Delta    float64 `json:"delta"`
 }
 
 // MainStat is the primary stat of the gear piece.
@@ -138,16 +146,47 @@ type GearScore struct {
 
 // Gear is the full gear piece as received from /api/generate or /api/enhance.
 type Gear struct {
-	ID       string    `json:"id"`
-	Set      string    `json:"set"`
-	Slot     string    `json:"slot"`
-	Rarity   string    `json:"rarity"`
-	Level    int       `json:"level"`
-	Enhance  int       `json:"enhance"`
-	Main     MainStat  `json:"main"`
-	Substats []Substat `json:"substats"`
-	Score    GearScore `json:"score"`
-	Reforged bool      `json:"reforged,omitempty"`
+	ID       string         `json:"id"`
+	Set      string         `json:"set"`
+	Slot     string         `json:"slot"`
+	Rarity   string         `json:"rarity"`
+	Level    int            `json:"level"`
+	Enhance  int            `json:"enhance"`
+	Main     MainStat       `json:"main"`
+	Substats []Substat      `json:"substats"`
+	StepLog  []StepLogEntry `json:"stepLog,omitempty"`
+	Score    GearScore      `json:"score"`
+	Reforged bool           `json:"reforged,omitempty"`
+}
+
+// GlobalConfig holds execution switches and cost/value calibration tables per Q-E7-Architecture §4
+type GlobalConfig struct {
+	Mode           string             `json:"mode"`           // "HERO" | "SPEED" (default "HERO")
+	ModBudget      string             `json:"modBudget"`      // "none" | "surplus"
+	ReforgeBudget  string             `json:"reforgeBudget"`  // "none" | "surplus"
+	MissBudget     int                `json:"missBudget"`     // default 1
+	EffFloor       float64            `json:"effFloor"`       // default 0.50
+	ValueHero      map[string]float64 `json:"valueHero"`      // CORE: 100, USABLE: 60, MARGINAL: 20, REJECT: 0, per_landmine_roll: -8
+	ValueSpeed     map[string]float64 `json:"valueSpeed"`     // quad: 1000, penta: 1200, triple: 40, else: 0
+	CostHero       map[int]float64    `json:"costHero"`       // 0->3: 3, 3->6: 6, 6->9: 12, 9->12: 30, 12->15: 60
+	CostSpeed      map[int]float64    `json:"costSpeed"`      // 0->3: 1, 3->6: 2, 6->9: 4, 9->12: 15, 12->15: 40
+	SpeedKeepRolls int                `json:"speedKeepRolls"` // default 4
+}
+
+// DefaultGlobalConfig returns standard calibrated configuration
+func DefaultGlobalConfig() GlobalConfig {
+	return GlobalConfig{
+		Mode:           "HERO",
+		ModBudget:      "none",
+		ReforgeBudget:  "none",
+		MissBudget:     1,
+		EffFloor:       0.50,
+		ValueHero:      map[string]float64{"CORE": 100, "USABLE": 60, "MARGINAL": 20, "REJECT": 0, "per_landmine_roll": -8},
+		ValueSpeed:     map[string]float64{"quad": 1000, "penta": 1200, "triple": 40, "else": 0},
+		CostHero:       map[int]float64{0: 3, 3: 6, 6: 12, 9: 30, 12: 60},
+		CostSpeed:      map[int]float64{0: 1, 3: 2, 6: 4, 9: 15, 12: 40},
+		SpeedKeepRolls: 4,
+	}
 }
 
 type EvaluateRequest struct {
@@ -330,15 +369,23 @@ type ProjectionScenario struct {
 	HeroFitPcts  map[string]float64 `json:"heroFitPcts"`  // hero_rank -> signed fit%
 }
 
-// StopCard is the enhancement depth decision emitted by the Enhancement Controller (§5)
+type HardCapsState struct {
+	C1MissBudget        bool `json:"c1MissBudget"`        // wasted <= miss_budget
+	C2MarginalEff       bool `json:"c2MarginalEff"`       // eff_best >= eff_floor
+	C3PathExists        bool `json:"c3PathExists"`        // finish class >= tier required
+	C4NoConjunctiveHope bool `json:"c4NoConjunctiveHope"` // no forced requirements unsatisfied
+}
+
+// StopCard is the enhancement depth decision emitted by the Enhancement Controller (§10)
 type StopCard struct {
-	EnhanceAtPoint      int     `json:"enhanceAtPoint"`
-	ObservedFitPct      float64 `json:"observedFitPct"`
-	PGood               float64 `json:"pGood"`
-	EVFinal             float64 `json:"evFinal"`
-	Recommended         string  `json:"recommended"` // "CONTINUE" | "STOP"
-	Reason              string  `json:"reason,omitempty"`
-	RollSequenceForCore string  `json:"rollSequenceForCore,omitempty"`
+	EnhanceAtPoint      int           `json:"enhanceAtPoint"`
+	ObservedFitPct      float64       `json:"observedFitPct"`
+	PGood               float64       `json:"pGood"`
+	EVFinal             float64       `json:"evFinal"`
+	Recommended         string        `json:"recommended"` // "CONTINUE" | "STOP"
+	Reason              string        `json:"reason,omitempty"`
+	HardCaps            HardCapsState `json:"hardCaps"`
+	RollSequenceForCore string        `json:"rollSequenceForCore,omitempty"`
 }
 
 type L5Trace struct {

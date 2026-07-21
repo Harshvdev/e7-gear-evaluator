@@ -281,14 +281,97 @@ func EvaluateLayer5(gear Gear, profile HeroProfile, baseStats HeroBaseStats) L5T
 	trace.PGood = pGood
 	trace.EVFinal = evFinal
 
-	// Enhancement Controller Stop Card (§5)
-	riskTol := profile.RiskTolerance
-	if riskTol <= 0 {
-		riskTol = 0.5
+	// Step 4: Enhancement Controller & Hard Caps (§10)
+	config := DefaultGlobalConfig()
+	missBudget := config.MissBudget
+	effFloor := config.EffFloor
+
+	// Calculate observed step classes
+	goodCount := 0
+	wastedCount := 0
+	steerableTaken := 0
+	steerableRemaining := 0
+
+	if strings.EqualFold(rarity, "Epic") {
+		steerableTaken = enhance / 3
+		steerableRemaining = (15 - enhance) / 3
+	} else {
+		if enhance <= 9 {
+			steerableTaken = enhance / 3
+			steerableRemaining = (9 - enhance) / 3
+		} else {
+			steerableTaken = 3
+			steerableRemaining = 0
+		}
 	}
 
-	costContinue := float64(15-enhance) * 1.0 // continuation cost per remaining roll step
-	valueStop := 0.0                          // default extract value = 0
+	for _, sub := range gear.Substats {
+		savKey := getSavKey(sub.Type)
+		prio := profile.Priorities[savKey]
+		w := GetPriorityWeight(prio)
+
+		// For existing sub rolls
+		if sub.Rolls > 0 {
+			avgValPerRoll := sub.Value / float64(sub.Rolls)
+			stepClass := ClassifyStep("HERO", sub.Type, avgValPerRoll, prio, level, rarity)
+			switch stepClass {
+			case "HARM", "WASTED":
+				wastedCount += sub.Rolls
+			case "GOOD":
+				goodCount += sub.Rolls
+			}
+		} else if w < 0 {
+			// Substat present with negative weight counts as HARM
+			wastedCount++
+		}
+	}
+
+	// Evaluate Hard Caps (C1 - C4)
+	c1Pass := wastedCount <= missBudget
+
+	effBest := 1.0
+	if steerableTaken+steerableRemaining > 0 {
+		effBest = float64(goodCount+steerableRemaining) / float64(steerableTaken+steerableRemaining)
+	}
+	c2Pass := effBest >= effFloor
+
+	// C3: Path exists (best-case finish >= tier required)
+	tierRequiredClass := "USABLE"
+	if strings.EqualFold(profile.RosterTier, "catalog") {
+		tierRequiredClass = "CORE"
+	}
+	c3Pass := false
+	if tierRequiredClass == "CORE" {
+		c3Pass = bestFit >= 70.0
+	} else {
+		c3Pass = bestFit >= 45.0
+	}
+
+	// C4: No Conjunctive Hope
+	// On Heroic gear at +9, if usable finish requires forced 4th sub to unlock a specific stat and roll high, check if unsatisfied
+	c4Pass := true
+	if strings.EqualFold(rarity, "Heroic") && enhance >= 9 && !forced4thExists {
+		// Check if current fit% is sub-usable and 4th sub must be a specific core stat
+		if currentFitPct < 45.0 && len(legal4thStats) > 0 {
+			best4thPrio := -999
+			for _, s := range legal4thStats {
+				p := profile.Priorities[getSavKey(s)]
+				if p > best4thPrio {
+					best4thPrio = p
+				}
+			}
+			if best4thPrio < 4 {
+				c4Pass = false
+			}
+		}
+	}
+
+	hardCaps := HardCapsState{
+		C1MissBudget:        c1Pass,
+		C2MarginalEff:       c2Pass,
+		C3PathExists:        c3Pass,
+		C4NoConjunctiveHope: c4Pass,
+	}
 
 	action := "CONTINUE"
 	reason := ""
@@ -296,15 +379,24 @@ func EvaluateLayer5(gear Gear, profile HeroProfile, baseStats HeroBaseStats) L5T
 	if enhance >= 15 {
 		action = "STOP"
 		reason = "ALREADY_DONE"
-	} else if pGood < riskTol {
+	} else if !c1Pass {
+		action = "STOP"
+		reason = "MISS_BUDGET_EXCEEDED"
+	} else if !c2Pass {
+		action = "STOP"
+		reason = "MARGINAL_EFFICIENCY_LOW"
+	} else if !c3Pass {
+		action = "STOP"
+		reason = "PATH_EXISTS"
+	} else if !c4Pass {
+		action = "STOP"
+		reason = "CONJUNCTIVE_HOPE"
+	} else if pGood < profile.RiskTolerance {
 		action = "STOP"
 		reason = "LOW_ODDS"
 	} else if evFinal < 45.0 {
 		action = "STOP"
 		reason = "BELOW_FLOOR"
-	} else if (evFinal - costContinue) <= valueStop && enhance > 0 {
-		action = "STOP"
-		reason = "NOT_WORTH_COST"
 	}
 
 	rollSeq := "Hit core stats on remaining rolls"
@@ -319,6 +411,7 @@ func EvaluateLayer5(gear Gear, profile HeroProfile, baseStats HeroBaseStats) L5T
 		EVFinal:             evFinal,
 		Recommended:         action,
 		Reason:              reason,
+		HardCaps:            hardCaps,
 		RollSequenceForCore: rollSeq,
 	}
 

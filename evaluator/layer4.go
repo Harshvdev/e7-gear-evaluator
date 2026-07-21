@@ -261,25 +261,25 @@ func EvaluateLayer4(gear Gear, profile HeroProfile, baseStats HeroBaseStats) L4H
 	}
 	result.Threshold = threshold
 
-	// Roster Tier Qualification Bar (§2.3)
+	// Roster Tier Qualification Bar (§7 & §14 T05)
 	switch rosterTier {
 	case "primary":
-		// Drives a keep if fit-class is USABLE or CORE (or MARGINAL if risk tolerance allows)
-		if fitClass == "CORE" || fitClass == "USABLE" || (fitClass == "MARGINAL" && riskTolerance >= 0.5) || result.FitScore >= threshold {
+		// Primary: fitClass is USABLE or CORE (fitPct >= 45.0)
+		if fitClass == "CORE" || fitClass == "USABLE" {
 			gate4Pass = true
 		}
 	case "bench":
-		// USABLE or CORE, and fit% >= median (50%)
+		// Bench: USABLE or CORE, and fitPct >= 50.0 (class median)
 		if (fitClass == "CORE" || fitClass == "USABLE") && fitPct >= 50.0 {
 			gate4Pass = true
 		}
 	case "catalog":
-		// CORE and fit% >= P90 (80%)
+		// Catalog: CORE and fitPct >= 80.0 (class P90)
 		if fitClass == "CORE" && fitPct >= 80.0 {
 			gate4Pass = true
 		}
 	default:
-		if fitClass == "CORE" || fitClass == "USABLE" || result.FitScore >= threshold {
+		if fitClass == "CORE" || fitClass == "USABLE" {
 			gate4Pass = true
 		}
 	}
