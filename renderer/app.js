@@ -142,6 +142,14 @@ function setupSliderLabelListeners() {
       topBadge.innerText = `${e.target.value}%`;
     });
   }
+
+  const riskSlider = document.getElementById('risk-tolerance');
+  const riskBadge = document.getElementById('risk-tolerance-val');
+  if (riskSlider && riskBadge) {
+    riskSlider.addEventListener('input', (e) => {
+      riskBadge.innerText = Number(e.target.value).toFixed(2);
+    });
+  }
 }
 
 /**
@@ -511,10 +519,14 @@ async function fetchEvaluatorData(gear) {
   }
   try {
     const speedCheckEl = document.getElementById('speed-check-toggle');
+    const modBudgetEl = document.getElementById('mod-budget-select');
+    const reforgeBudgetEl = document.getElementById('reforge-budget-select');
     const reqBody = {
       gear: gear,
       excludedBuilds: getExcludedBuildsPayload(),
       speedCheck: speedCheckEl && speedCheckEl.checked ? "ON" : "OFF",
+      modBudget: modBudgetEl ? modBudgetEl.value : "none",
+      reforgeBudget: reforgeBudgetEl ? reforgeBudgetEl.value : "none",
       customProfiles: customProfiles
     };
     const res = await fetch(`${EVALUATOR_API_BASE}/api/evaluate`, {
@@ -968,9 +980,11 @@ function getBuildConfigDefaults(heroName, rank) {
     let prio = 1;
     if (maxSav > 0) {
       const ratio = val / maxSav;
-      if (ratio >= 0.6) prio = 3;
-      else if (ratio >= 0.35) prio = 2;
-      else if (ratio >= 0.1) prio = 1;
+      if (ratio >= 0.85) prio = 5;
+      else if (ratio >= 0.60) prio = 4;
+      else if (ratio >= 0.35) prio = 3;
+      else if (ratio >= 0.20) prio = 2;
+      else if (ratio >= 0.05) prio = 1;
       else prio = 0;
     }
     priorities[s] = prio;
@@ -995,6 +1009,8 @@ function getBuildConfigDefaults(heroName, rank) {
   
   return {
     priorities,
+    rosterTier: "primary",
+    riskTolerance: 0.5,
     statRanges,
     sets: [ build.sets || [] ],
     minQuality: { score: 15.0 }, // default 15% Top %
@@ -1012,6 +1028,12 @@ function mergeProfiles(defaults, custom) {
 
   if (custom.priorities) {
     Object.assign(merged.priorities, custom.priorities);
+  }
+  if (custom.rosterTier) {
+    merged.rosterTier = custom.rosterTier;
+  }
+  if (custom.riskTolerance !== undefined && custom.riskTolerance !== null) {
+    merged.riskTolerance = custom.riskTolerance;
   }
   if (custom.statRanges) {
     for (let k in custom.statRanges) {
@@ -1054,6 +1076,18 @@ function openBuildConfigEditor(heroName, rank) {
     document.getElementById(`prio-${s}`).value = val;
     document.getElementById(`prio-${s}-val`).innerText = val;
   });
+
+  // Roster Tier & Risk Tolerance
+  const rosterTierEl = document.getElementById('roster-tier-select');
+  if (rosterTierEl) rosterTierEl.value = config.rosterTier || "primary";
+
+  const riskTolEl = document.getElementById('risk-tolerance');
+  const riskTolValEl = document.getElementById('risk-tolerance-val');
+  if (riskTolEl) {
+    const rVal = config.riskTolerance !== undefined ? config.riskTolerance : 0.5;
+    riskTolEl.value = rVal;
+    if (riskTolValEl) riskTolValEl.innerText = Number(rVal).toFixed(2);
+  }
 
   // Fit Threshold Top %
   const threshold = (config.minQuality && config.minQuality.score !== undefined && config.minQuality.score !== null) ? config.minQuality.score : 15;
@@ -1182,6 +1216,9 @@ function saveBuildConfig() {
     priorities[s] = parseInt(document.getElementById(`prio-${s}`).value, 10);
   });
 
+  const rosterTier = document.getElementById('roster-tier-select') ? document.getElementById('roster-tier-select').value : "primary";
+  const riskTolerance = document.getElementById('risk-tolerance') ? parseFloat(document.getElementById('risk-tolerance').value) : 0.5;
+
   const topThreshold = parseFloat(document.getElementById('prio-top').value);
   const strictMode = document.getElementById('weight-mode-strict').checked;
 
@@ -1207,6 +1244,8 @@ function saveBuildConfig() {
 
   customProfiles[editingHeroName][editingBuildRank] = {
     priorities,
+    rosterTier,
+    riskTolerance,
     statRanges,
     sets: cleanedCombos,
     minQuality: { score: topThreshold, efficiency: null },

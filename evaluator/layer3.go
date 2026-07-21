@@ -1,11 +1,16 @@
 package main
 
-// EvaluateLayer3 implements the speed check toggle rule.
-func EvaluateLayer3(gear Gear, speedCheckToggle string) L3Trace {
+// EvaluateLayer3 implements the speed check toggle rule with optional speed_vault_min threshold.
+func EvaluateLayer3(gear Gear, speedCheckToggle string, speedVaultMin ...float64) L3Trace {
 	trace := L3Trace{
 		Toggle:     speedCheckToggle,
 		Tagged:     false,
 		SpeedValue: 0.0,
+	}
+
+	minThreshold := 0.0
+	if len(speedVaultMin) > 0 {
+		minThreshold = speedVaultMin[0]
 	}
 
 	// Find Speed substat
@@ -24,10 +29,7 @@ func EvaluateLayer3(gear Gear, speedCheckToggle string) L3Trace {
 		// Default to ON if empty/unspecified
 		toggleOn := speedCheckToggle == "" || speedCheckToggle == "ON" || speedCheckToggle == "on"
 		
-		// If toggle is ON, tag it as Speed Vault.
-		// Note: speed_vault_min threshold can be applied here.
-		// Since user request doesn't pass a custom min, we default to 0 (any Speed vaults).
-		if toggleOn && speedVal >= 0 {
+		if toggleOn && speedVal >= minThreshold {
 			trace.Tagged = true
 		}
 	}

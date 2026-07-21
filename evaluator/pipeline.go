@@ -5,10 +5,12 @@ import (
 	"math"
 )
 
-// RunRunEvaluationPipeline orchestrates layers L0 through L7.
+// RunEvaluationPipeline orchestrates layers L0 through L7.
 func RunEvaluationPipeline(
 	gear Gear,
 	speedCheckToggle string,
+	modBudget string,
+	reforgeBudget string,
 	excludedBuilds map[string][]int,
 	customProfiles map[string]map[int]HeroProfile,
 ) EvaluationResponse {
@@ -30,16 +32,17 @@ func RunEvaluationPipeline(
 
 	if hasL1Violations || l2Fired {
 		verdict := "Sell"
+		l6Verdict := "SELL_EXTRACT"
 		if l2Fired {
 			verdict = "Discard"
+			l6Verdict = "DISCARD_WORTHLESS"
 		}
 		
 		// Construct early trace
 		l6Trace := L6Trace{
-			Verdict: "SELL_EXTRACT",
-		}
-		if l2Fired {
-			l6Trace.Verdict = "SELL_EXTRACT"
+			Verdict:       l6Verdict,
+			ModBudget:     modBudget,
+			ReforgeBudget: reforgeBudget,
 		}
 		
 		l4Trace := L4Trace{PerHero: []L4HeroGateResult{}}
@@ -105,6 +108,12 @@ func RunEvaluationPipeline(
 						if custom.WeightMode != "" {
 							profile.WeightMode = custom.WeightMode
 						}
+						if custom.RosterTier != "" {
+							profile.RosterTier = custom.RosterTier
+						}
+						if custom.RiskTolerance > 0 {
+							profile.RiskTolerance = custom.RiskTolerance
+						}
 						if len(custom.AccessoryMains) > 0 {
 							profile.AccessoryMains = custom.AccessoryMains
 						}
@@ -132,7 +141,7 @@ func RunEvaluationPipeline(
 	}
 
 	// Step 6: Run Layer 6 (Decision & Salvage)
-	l6Trace := EvaluateLayer6(normalizedGear, l3Trace, l4Trace.PerHero, l5TracesMap, profiles, baseStatsMap)
+	l6Trace := EvaluateLayer6(normalizedGear, l3Trace, l4Trace.PerHero, l5TracesMap, profiles, baseStatsMap, modBudget, reforgeBudget)
 
 	// Step 7: Run Layer 7 (Trace generation)
 	trace := EvaluateLayer7(normalizedGear.ID, speedCheckToggle, l0Trace, l1Trace, l2Trace, l3Trace, l4Trace, l5TracesMap, l6Trace, profiles)
@@ -140,7 +149,7 @@ func RunEvaluationPipeline(
 	// Map L6 verdict to legacy Verdict
 	legacyGlobalVerdict := "Sell"
 	switch l6Trace.Verdict {
-	case "KEEP_ENHANCE", "SALVAGE_MOD":
+	case "KEEP_ENHANCE", "KEEP_MARGINAL", "SALVAGE_MOD", "REFORGE_TAG":
 		legacyGlobalVerdict = "Worthy"
 	case "SPEED_VAULT":
 		legacyGlobalVerdict = "Speed Check"
@@ -274,15 +283,17 @@ func RunEvaluationPipeline(
 // CompileHeroProfile compiles a Fribbels HeroBuild build statistics block into the canonical HeroProfile model.
 func CompileHeroProfile(heroName string, build HeroBuild) HeroProfile {
 	profile := HeroProfile{
-		HeroID:      fmt.Sprintf("%s_Build_%d", heroName, build.Rank),
-		HeroName:    heroName,
-		BuildRank:   build.Rank,
-		Selected:    true,
-		StatRanges:  make(map[string]StatBounds),
-		Sets:        [][]string{build.Sets},
-		Priorities:  make(map[string]int),
-		WeightMode:  "weighted",
-		OriginalSav: build.Sav,
+		HeroID:        fmt.Sprintf("%s_Build_%d", heroName, build.Rank),
+		HeroName:      heroName,
+		BuildRank:     build.Rank,
+		Selected:      true,
+		RosterTier:    "primary",
+		RiskTolerance: 0.5,
+		StatRanges:    make(map[string]StatBounds),
+		Sets:          [][]string{build.Sets},
+		Priorities:    make(map[string]int),
+		WeightMode:    "weighted",
+		OriginalSav:   build.Sav,
 	}
 
 	// Determine max SAV to normalize weights
@@ -295,20 +306,24 @@ func CompileHeroProfile(heroName string, build HeroBuild) HeroProfile {
 		}
 	}
 
-	// Convert SAV to priorities (0..3)
+	// Convert SAV to signed priorities (-3..+5) per Q-E7-Architecture §2.2
 	for _, s := range stats {
 		val := build.Sav.Get(s)
 		var prio int
 		if maxSav > 0 {
 			ratio := val / maxSav
-			if ratio >= 0.6 {
-				prio = 3
+			if ratio >= 0.85 {
+				prio = 5 // essential
+			} else if ratio >= 0.60 {
+				prio = 4 // core
 			} else if ratio >= 0.35 {
-				prio = 2
-			} else if ratio >= 0.1 {
-				prio = 1
+				prio = 3 // wanted
+			} else if ratio >= 0.20 {
+				prio = 2 // useful
+			} else if ratio >= 0.05 {
+				prio = 1 // filler
 			} else {
-				prio = 0
+				prio = 0 // neutral
 			}
 		} else {
 			prio = 1

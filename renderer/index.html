@@ -121,6 +121,25 @@
         <span style="font-size: 0.6875rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">When enabled, any gear with a Speed substat will bypass normal hero build checks and be vaulted.</span>
       </div>
 
+      <!-- Scarcity Policy Toggles -->
+      <div class="form-group" style="margin-top: 1rem;">
+        <label>Modification Gem Budget (mod_budget)</label>
+        <select id="mod-budget-select" class="select-dropdown" style="width: 100%;">
+          <option value="none" selected>none (Strict: Polish USABLE as-is bases only)</option>
+          <option value="surplus">surplus (Allow Modding USABLE+ bases to reach CORE)</option>
+        </select>
+        <span style="font-size: 0.6875rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">Determines whether modification stones can be budgeted to upgrade equippable pieces.</span>
+      </div>
+
+      <div class="form-group" style="margin-top: 1rem;">
+        <label>Reforge Materials Budget (reforge_budget)</label>
+        <select id="reforge-budget-select" class="select-dropdown" style="width: 100%;">
+          <option value="none" selected>none (Standard L85 Evaluation)</option>
+          <option value="surplus">surplus (Tag pieces elevated to CORE via Reforge)</option>
+        </select>
+        <span style="font-size: 0.6875rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">Determines whether reforge material expenditure is permitted to boost borderline pieces.</span>
+      </div>
+
       <!-- Divider line -->
       <hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.08); margin: 1.5rem 0;">
 
@@ -221,58 +240,74 @@
         
         <!-- Column 1: Substat Priorities & Fit -->
         <div>
-          <h3 style="font-family: var(--font-display); font-size: 0.875rem; font-weight: 700; color: #fff; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Substat Priorities (0-3)</h3>
+          <h3 style="font-family: var(--font-display); font-size: 0.875rem; font-weight: 700; color: #fff; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Substat Priorities (-3 to +5)</h3>
           
           <div class="slider-group" style="margin-bottom: 0.75rem;">
             <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
               <span>Attack</span> <strong id="prio-atk-val">1</strong>
             </label>
-            <input type="range" id="prio-atk" min="0" max="3" value="1" step="1" style="width:100%; accent-color: var(--primary);">
+            <input type="range" id="prio-atk" min="-3" max="5" value="1" step="1" style="width:100%; accent-color: var(--primary);">
           </div>
           <div class="slider-group" style="margin-bottom: 0.75rem;">
             <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
               <span>HP</span> <strong id="prio-hp-val">1</strong>
             </label>
-            <input type="range" id="prio-hp" min="0" max="3" value="1" step="1" style="width:100%; accent-color: var(--primary);">
+            <input type="range" id="prio-hp" min="-3" max="5" value="1" step="1" style="width:100%; accent-color: var(--primary);">
           </div>
           <div class="slider-group" style="margin-bottom: 0.75rem;">
             <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
               <span>Defense</span> <strong id="prio-def-val">1</strong>
             </label>
-            <input type="range" id="prio-def" min="0" max="3" value="1" step="1" style="width:100%; accent-color: var(--primary);">
+            <input type="range" id="prio-def" min="-3" max="5" value="1" step="1" style="width:100%; accent-color: var(--primary);">
           </div>
           <div class="slider-group" style="margin-bottom: 0.75rem;">
             <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
               <span>Speed</span> <strong id="prio-spd-val">1</strong>
             </label>
-            <input type="range" id="prio-spd" min="0" max="3" value="1" step="1" style="width:100%; accent-color: var(--primary);">
+            <input type="range" id="prio-spd" min="-3" max="5" value="1" step="1" style="width:100%; accent-color: var(--primary);">
           </div>
           <div class="slider-group" style="margin-bottom: 0.75rem;">
             <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
               <span>Crit Rate</span> <strong id="prio-cc-val">1</strong>
             </label>
-            <input type="range" id="prio-cc" min="0" max="3" value="1" step="1" style="width:100%; accent-color: var(--primary);">
+            <input type="range" id="prio-cc" min="-3" max="5" value="1" step="1" style="width:100%; accent-color: var(--primary);">
           </div>
           <div class="slider-group" style="margin-bottom: 0.75rem;">
             <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
               <span>Crit Damage</span> <strong id="prio-cd-val">1</strong>
             </label>
-            <input type="range" id="prio-cd" min="0" max="3" value="1" step="1" style="width:100%; accent-color: var(--primary);">
+            <input type="range" id="prio-cd" min="-3" max="5" value="1" step="1" style="width:100%; accent-color: var(--primary);">
           </div>
           <div class="slider-group" style="margin-bottom: 0.75rem;">
             <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
               <span>Effectiveness</span> <strong id="prio-eff-val">1</strong>
             </label>
-            <input type="range" id="prio-eff" min="0" max="3" value="1" step="1" style="width:100%; accent-color: var(--primary);">
+            <input type="range" id="prio-eff" min="-3" max="5" value="1" step="1" style="width:100%; accent-color: var(--primary);">
           </div>
           <div class="slider-group" style="margin-bottom: 0.75rem;">
             <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
               <span>Resistance</span> <strong id="prio-res-val">1</strong>
             </label>
-            <input type="range" id="prio-res" min="0" max="3" value="1" step="1" style="width:100%; accent-color: var(--primary);">
+            <input type="range" id="prio-res" min="-3" max="5" value="1" step="1" style="width:100%; accent-color: var(--primary);">
           </div>
           
-          <div class="slider-group" style="margin-top: 1.5rem; margin-bottom: 0.75rem;">
+          <div class="form-group" style="margin-top: 1rem;">
+            <label>Roster Tier</label>
+            <select id="roster-tier-select" class="select-dropdown" style="width:100%;">
+              <option value="primary" selected>Primary (Active Core Roster)</option>
+              <option value="bench">Bench (Secondary Roster)</option>
+              <option value="catalog">Catalog (Theoretical Match Only)</option>
+            </select>
+          </div>
+
+          <div class="slider-group" style="margin-top: 0.75rem; margin-bottom: 0.75rem;">
+            <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
+              <span>Risk Tolerance (Controller Floor)</span> <strong id="risk-tolerance-val">0.50</strong>
+            </label>
+            <input type="range" id="risk-tolerance" min="0.1" max="0.9" value="0.5" step="0.05" style="width:100%; accent-color: var(--primary);">
+          </div>
+
+          <div class="slider-group" style="margin-top: 1rem; margin-bottom: 0.75rem;">
             <label style="display:flex; justify-content:space-between; font-size:0.75rem; color:#fff; font-weight:700;">
               <span>Fit Threshold (Top % rank)</span> <strong id="prio-top-val">15%</strong>
             </label>
@@ -281,7 +316,7 @@
           <div class="form-group" style="margin-top: 1rem;">
             <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.75rem; cursor:pointer;">
               <input type="checkbox" id="weight-mode-strict" style="width:1rem; height:1rem; accent-color:var(--primary);">
-              <span>Strict Weight Mode (Prio-3 stats are mandatory)</span>
+              <span>Strict Weight Mode (Prio ≥4 stats are mandatory)</span>
             </label>
           </div>
         </div>

@@ -40,6 +40,24 @@ func EvaluateLayer4(gear Gear, profile HeroProfile, baseStats HeroBaseStats) L4H
 		Pass:        false,
 	}
 
+	// Check if profile is inert (zero priorities, no sets, no ranges)
+	isInert := len(profile.Sets) == 0 && len(profile.StatRanges) == 0
+
+	if isInert {
+		hasPriority := false
+		for _, p := range profile.Priorities {
+			if p > 0 {
+				hasPriority = true
+				break
+			}
+		}
+		if !hasPriority {
+			result.GateResults = [4]bool{false, false, false, false}
+			result.Pass = false
+			return result
+		}
+	}
+
 	// --- Gate 1: Set compatibility ---
 	gate1Pass := false
 	if len(profile.Sets) == 0 {
@@ -82,15 +100,14 @@ func EvaluateLayer4(gear Gear, profile HeroProfile, baseStats HeroBaseStats) L4H
 		// Accessory main stats checklist validation
 		if len(profile.AccessoryMains) > 0 {
 			mainStatAllowed := false
+			gearMainNorm := NormalizeStatType(gear.Main.Type)
 			for _, accMain := range profile.AccessoryMains {
-				if strings.EqualFold(accMain, gear.Main.Type) {
+				if NormalizeStatType(accMain) == gearMainNorm {
 					mainStatAllowed = true
 					break
 				}
 			}
-			if !mainStatAllowed {
-				gate2Pass = false
-			}
+			gate2Pass = mainStatAllowed
 		}
 
 		// Strict-mode exclusion check
@@ -153,11 +170,9 @@ func EvaluateLayer4(gear Gear, profile HeroProfile, baseStats HeroBaseStats) L4H
 			for statKey, bounds := range profile.StatRanges {
 				if bounds.Max != nil {
 					maxVal := *bounds.Max
-					// Calculate gear's contribution to this stat
-					contrib := getGearContributionToStat(gear, statKey, baseStats)
-					baseVal := getHeroBaseStatValue(statKey, baseStats)
+					totalStat := calculateTotalHeroStat(statKey, gear, baseStats)
 
-					if baseVal+contrib > maxVal {
+					if totalStat > maxVal {
 						// cc is a hard-cap stat
 						if statKey == "cc" && profile.WeightMode == "strict" {
 							gate3Pass = false
@@ -170,21 +185,36 @@ func EvaluateLayer4(gear Gear, profile HeroProfile, baseStats HeroBaseStats) L4H
 	}
 	result.GateResults[2] = gate3Pass
 
-	// --- Gate 4: Priority fit score ---
+	// --- Gate 4: Priority fit score & Roster Tier qualification ---
 	gate4Pass := false
-	fitScore := GetHeroWeightedScore(gear, profile, baseStats)
-	result.FitScore = fitScore
+	rawFit, maxFit, fitPct, fitClass, absencePenalty := CalculateHeroFit(gear, profile, baseStats)
+
+	rosterTier := profile.RosterTier
+	if rosterTier == "" {
+		rosterTier = "primary"
+	}
+	riskTolerance := profile.RiskTolerance
+	if riskTolerance <= 0 {
+		riskTolerance = 0.5
+	}
+
+	result.RawFit = rawFit
+	result.MaxFit = maxFit
+	result.FitPct = fitPct
+	result.FitClass = fitClass
+	result.AbsencePenalty = absencePenalty
+	result.RosterTier = rosterTier
+	result.FitScore = rawFit // legacy compatibility score
 
 	// Apply penalty for soft-cap max bounds overflow if present
 	if profile.StatRanges != nil {
 		for statKey, bounds := range profile.StatRanges {
 			if bounds.Max != nil {
 				maxVal := *bounds.Max
-				contrib := getGearContributionToStat(gear, statKey, baseStats)
-				baseVal := getHeroBaseStatValue(statKey, baseStats)
-				if baseVal+contrib > maxVal {
+				totalStat := calculateTotalHeroStat(statKey, gear, baseStats)
+				if totalStat > maxVal {
 					// Soft-cap penalty: subtract the overflow portion scaled down
-					overflow := (baseVal + contrib) - maxVal
+					overflow := totalStat - maxVal
 					result.FitScore -= overflow * 2.0 // penalty multiplier
 				}
 			}
@@ -193,19 +223,14 @@ func EvaluateLayer4(gear Gear, profile HeroProfile, baseStats HeroBaseStats) L4H
 
 	// Dynamic threshold based on priorities
 	maxW := 0.0
-	for _, w := range profile.Priorities {
-		var weight float64
-		switch w {
-		case 1:
-			weight = 1.0
-		case 2:
-			weight = 2.5
-		case 3:
-			weight = 5.0
-		}
+	for _, prio := range profile.Priorities {
+		weight := GetPriorityWeight(prio)
 		if weight > maxW {
 			maxW = weight
 		}
+	}
+	if maxW <= 0 {
+		maxW = 1.0
 	}
 
 	baseMultiplier := 15.0
@@ -236,15 +261,33 @@ func EvaluateLayer4(gear Gear, profile HeroProfile, baseStats HeroBaseStats) L4H
 	}
 	result.Threshold = threshold
 
-	// Perform checks
-	if result.FitScore >= threshold {
-		gate4Pass = true
+	// Roster Tier Qualification Bar (§2.3)
+	switch rosterTier {
+	case "primary":
+		// Drives a keep if fit-class is USABLE or CORE (or MARGINAL if risk tolerance allows)
+		if fitClass == "CORE" || fitClass == "USABLE" || (fitClass == "MARGINAL" && riskTolerance >= 0.5) || result.FitScore >= threshold {
+			gate4Pass = true
+		}
+	case "bench":
+		// USABLE or CORE, and fit% >= median (50%)
+		if (fitClass == "CORE" || fitClass == "USABLE") && fitPct >= 50.0 {
+			gate4Pass = true
+		}
+	case "catalog":
+		// CORE and fit% >= P90 (80%)
+		if fitClass == "CORE" && fitPct >= 80.0 {
+			gate4Pass = true
+		}
+	default:
+		if fitClass == "CORE" || fitClass == "USABLE" || result.FitScore >= threshold {
+			gate4Pass = true
+		}
 	}
 
-	// Strict mode: every priority-3 stat must be present
+	// Strict mode: every priority >= 4 stat must be present
 	if profile.WeightMode == "strict" {
 		for statKey, prio := range profile.Priorities {
-			if prio == 3 {
+			if prio >= 4 {
 				hasStat := false
 				if getSavKey(gear.Main.Type) == statKey {
 					hasStat = true
@@ -337,10 +380,40 @@ func getHeroBaseStatValue(statKey string, baseStats HeroBaseStats) float64 {
 	case "cd":
 		return baseStats.Cd * 100.0
 	case "eff":
-		return baseStats.Eff
+		return baseStats.Eff * 100.0
 	case "res":
-		return baseStats.Res
+		return baseStats.Res * 100.0
 	default:
 		return 0
 	}
 }
+
+func calculateTotalHeroStat(statKey string, gear Gear, baseStats HeroBaseStats) float64 {
+	baseVal := getHeroBaseStatValue(statKey, baseStats)
+	if statKey == "atk" || statKey == "def" || statKey == "hp" {
+		var flats float64
+		var percents float64
+
+		if getSavKey(gear.Main.Type) == statKey {
+			if isFlatMainStat(gear.Main.Type) {
+				flats += gear.Main.Value
+			} else {
+				percents += gear.Main.Value
+			}
+		}
+		for _, sub := range gear.Substats {
+			if getSavKey(sub.Type) == statKey {
+				if strings.HasSuffix(sub.Type, "Percent") || sub.Type == "AttackPercent" || sub.Type == "HealthPercent" || sub.Type == "DefensePercent" {
+					percents += sub.Value
+				} else {
+					flats += sub.Value
+				}
+			}
+		}
+		return baseVal*(1.0+percents/100.0) + flats
+	}
+
+	contrib := getGearContributionToStat(gear, statKey, baseStats)
+	return baseVal + contrib
+}
+

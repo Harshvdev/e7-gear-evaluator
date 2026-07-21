@@ -313,11 +313,24 @@ function renderHeroDetail() {
 	selectedHero.builds.forEach(b => {
 		const verdictClass = b.verdict === 'Worthy' ? 'eval-status-worthy' : 'eval-status-sell';
 
-		// WAS progress bar (capped at 100% visually, but shown as actual %)
+		// WAS / heroFit% progress bar
 		const wasPct = b.wasPct || 0;
-		const barPct = Math.min(wasPct, 100);
-		const barColor = b.verdict === 'Worthy' ? '#22c55e' : (wasPct >= 70 ? '#f59e0b' : '#ef4444');
-		const wasLabel = b.verdict === 'Worthy' ? `${wasPct.toFixed(1)}% ✓` : `${wasPct.toFixed(1)}%`;
+		const barPct = Math.min(Math.max(wasPct, 0), 100);
+		
+		let fitClassLabel = "REJECT";
+		let barColor = "#ef4444";
+		if (wasPct >= 70.0) {
+			fitClassLabel = "CORE";
+			barColor = "#10b981";
+		} else if (wasPct >= 45.0) {
+			fitClassLabel = "USABLE";
+			barColor = "#3b82f6";
+		} else if (wasPct >= 20.0) {
+			fitClassLabel = "MARGINAL";
+			barColor = "#f59e0b";
+		}
+
+		const wasLabel = `heroFit%: ${wasPct.toFixed(1)}% (${fitClassLabel})`;
 
 		// Create rows for each substat of the gear
 		let statsGridHtml = '';
@@ -332,12 +345,12 @@ function renderHeroDetail() {
 			const textClass = isLandmine ? 'landmine-text' : 'valid-text';
 			const label = formatStatLabel(sub.type);
 			const formattedSav = typeof savValue === 'number' ? savValue.toFixed(1) : '0.0';
-			const weightNote = isLandmine ? ` (Low SAV)` : '';
+			const weightNote = isLandmine ? ` (Low Priority)` : '';
 
 			statsGridHtml += `
 				<div class="eval-stat-row ${rowClass}">
 					<span class="eval-stat-name">${label}</span>
-					<span class="eval-stat-sav ${textClass}">SAV: ${formattedSav}${weightNote}</span>
+					<span class="eval-stat-sav ${textClass}">Prio Weight: ${formattedSav}${weightNote}</span>
 				</div>
 			`;
 		});
@@ -346,10 +359,13 @@ function renderHeroDetail() {
 			<div class="eval-build-card">
 				<div class="eval-build-title">
 					<span>Build Rank #${b.rank}</span>
-					<span class="eval-status-badge ${verdictClass}">${b.verdict}</span>
+					<div style="display: flex; gap: 0.375rem; align-items: center;">
+						<span class="build-rank-pill ${verdictClass}" style="font-size: 0.6875rem; padding: 2px 6px; border-radius: 4px; background: ${barColor}; color: #000; font-weight: 700;">${fitClassLabel}</span>
+						<span class="eval-status-badge ${verdictClass}">${b.verdict}</span>
+					</div>
 				</div>
 				<div class="eval-build-sets">${b.sets.join(' / ')} Set</div>
-				<div class="eval-was-bar-container" title="Weighted Alignment Score: ${wasPct.toFixed(1)}% of threshold">
+				<div class="eval-was-bar-container" title="heroFit%: ${wasPct.toFixed(1)}%">
 					<div class="eval-was-bar-track">
 						<div class="eval-was-bar-fill" style="width: ${barPct}%; background: ${barColor};"></div>
 					</div>
@@ -466,6 +482,28 @@ function renderPipelineTrace(listEl) {
 	const wssBest = bestScen ? bestScen.score : 0;
 	const wssWorst = worstScen ? worstScen.score : 0;
 
+	let stopCardHtml = '';
+	if (trace.l5.stopCard) {
+		const sc = trace.l5.stopCard;
+		const isStop = sc.recommended === 'STOP';
+		const badgeCls = isStop ? 'status-fail' : 'status-pass';
+		const pGoodPct = (sc.pGood * 100).toFixed(0);
+
+		stopCardHtml = `
+			<div class="salvage-plan-card" style="margin-top: 0.75rem; background: rgba(0,0,0,0.25); border-left-color: ${isStop ? '#ef4444' : '#10b981'};">
+				<div class="salvage-plan-title" style="display: flex; justify-content: space-between; align-items: center;">
+					<span>Enhancement Controller (Stop Point +${sc.enhanceAtPoint})</span>
+					<span class="trace-step-status ${badgeCls}">${sc.recommended}</span>
+				</div>
+				<div class="salvage-plan-body" style="margin-top: 0.375rem;">
+					${isStop ? `<p style="color: #ef4444; font-weight: 700; margin-bottom: 0.25rem;">Stop Reason: ${sc.reason}</p>` : ''}
+					<p style="margin-bottom: 0.25rem;">Continuation Odds (P_good): <strong>${pGoodPct}%</strong> | Expected Value (EV_final): <strong>${sc.evFinal.toFixed(1)}</strong></p>
+					<p style="font-size: 0.6875rem; color: var(--text-muted); font-style: italic;">${sc.rollSequenceForCore}</p>
+				</div>
+			</div>
+		`;
+	}
+
 	const l5Body = `
 		<p>Current Gear Substat Score: <strong>${wssCurrent.toFixed(1)} WSS</strong></p>
 		
@@ -485,6 +523,8 @@ function renderPipelineTrace(listEl) {
 			</div>
 			${currentGear.level === 85 ? `<p style="font-size: 0.6875rem; color: var(--text-muted); margin-top: 0.5rem; font-style: italic;">*Includes reforge calculation to Level 90 increments based on roll counts.</p>` : ''}
 		</div>
+
+		${stopCardHtml}
 	`;
 
 	// L6 Decision & Salvage
@@ -495,9 +535,17 @@ function renderPipelineTrace(listEl) {
 		l6VerdictClass = "status-pass";
 		l6VerdictLabel = "Keep & Enhance";
 		break;
+	case "KEEP_MARGINAL":
+		l6VerdictClass = "status-tag";
+		l6VerdictLabel = "Keep (Marginal)";
+		break;
 	case "SALVAGE_MOD":
 		l6VerdictClass = "status-pass";
-		l6VerdictLabel = "Salvage Candidate";
+		l6VerdictLabel = "Salvage Candidate (Mod)";
+		break;
+	case "REFORGE_TAG":
+		l6VerdictClass = "status-pass";
+		l6VerdictLabel = "Reforge Candidate";
 		break;
 	case "SPEED_VAULT":
 		l6VerdictClass = "status-tag";

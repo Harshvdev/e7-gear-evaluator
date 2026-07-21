@@ -1,42 +1,44 @@
 package main
 
 import (
-	"math"
 	"strings"
 )
+
 
 // EvaluateLayer5 calculates current and projected substat envelopes at +15, including reforge increments.
 func EvaluateLayer5(gear Gear, profile HeroProfile, baseStats HeroBaseStats) L5Trace {
 	trace := L5Trace{
-		CurrentWSS:       GetWSSScore(gear),
-		CurrentHeroScore: make(map[string]float64),
-		Scenarios:        []ProjectionScenario{},
+		CurrentWSS:        GetWSSScore(gear),
+		CurrentHeroScore:  make(map[string]float64),
+		CurrentHeroFitPct: make(map[string]float64),
+		Scenarios:         []ProjectionScenario{},
 	}
 
-	trace.CurrentHeroScore[profile.HeroID] = GetHeroWeightedScore(gear, profile, baseStats)
+	rawFit, _, currentFitPct, _, _ := CalculateHeroFit(gear, profile, baseStats)
+	trace.CurrentHeroScore[profile.HeroID] = rawFit
+	trace.CurrentHeroFitPct[profile.HeroID] = currentFitPct
 
 	// Step 1: Calculate remaining rolls
 	enhance := gear.Enhance
 	rarity := gear.Rarity
 	level := gear.Level
 
+	rarityKey := "Epic"
+	if strings.EqualFold(rarity, "Heroic") {
+		rarityKey = "Heroic"
+	}
+
 	var randRolls int
 	var forced4thRolls int
 	var forced4thExists bool
 
 	if strings.EqualFold(rarity, "Epic") {
-		// Epic: starting 4 rolls, gets 1 at each +3/+6/+9/+12/+15 (up to 9 rolls total)
-		// already rolled: 4 + enhance/3
-		// remaining: 9 - (4 + enhance/3) = 5 - enhance/3
 		randRolls = 5 - enhance/3
 		if randRolls < 0 {
 			randRolls = 0
 		}
 	} else {
-		// Heroic: starts with 3, gets 1 at each +3/+6/+9.
-		// Unlocks 4th sub at +12 (forced roll) and +15 (forced roll).
 		if enhance < 12 {
-			// remaining random rolls for original 3 subs
 			randRolls = 3 - enhance/3
 			forced4thRolls = 2
 			forced4thExists = false
@@ -54,24 +56,11 @@ func EvaluateLayer5(gear Gear, profile HeroProfile, baseStats HeroBaseStats) L5T
 	// Legal stats for 4th substat (if not exists yet)
 	var legal4thStats []string
 	if !forced4thExists && len(gear.Substats) < 4 {
-		allowed := SubstatsBySlot[gear.Slot]
-		// Subtract main stat
-		// Subtract 3 existing substats
-		for s := range allowed {
-			if s == gear.Main.Type {
-				continue
-			}
-			exists := false
-			for _, sub := range gear.Substats {
-				if sub.Type == s {
-					exists = true
-					break
-				}
-			}
-			if !exists {
-				legal4thStats = append(legal4thStats, s)
-			}
+		var existingSubTypes []string
+		for _, sub := range gear.Substats {
+			existingSubTypes = append(existingSubTypes, sub.Type)
 		}
+		legal4thStats = GetLegalSubstats(gear.Slot, gear.Main.Type, existingSubTypes)
 	}
 
 	// Enumerate scenarios
@@ -84,44 +73,42 @@ func EvaluateLayer5(gear Gear, profile HeroProfile, baseStats HeroBaseStats) L5T
 		if randRolls > 0 {
 			switch name {
 			case "expected":
-				// Distribute expected rolls uniformly across existing subs
 				expectedRandPerSub := float64(randRolls) / float64(len(gear.Substats))
 				for i := range projSubstats {
-					avgRoll := GetAverageRoll(level, rarity, projSubstats[i].Type)
+					avgRoll := GetAverageRoll(level, rarityKey, projSubstats[i].Type)
 					projSubstats[i].Value += expectedRandPerSub * avgRoll
-					projSubstats[i].Rolls += int(math.Round(expectedRandPerSub))
+				}
+				for r := 0; r < randRolls; r++ {
+					idx := r % len(projSubstats)
+					projSubstats[idx].Rolls++
 				}
 			case "best":
-				// Find the best substat for the hero
 				bestIdx := 0
-				bestWeight := -1.0
+				bestWeight := -999.0
 				for i, sub := range projSubstats {
 					savKey := getSavKey(sub.Type)
-					w := getHeroWeightMultiplier(profile.Priorities[savKey])
+					w := GetPriorityWeight(profile.Priorities[savKey])
 					if w > bestWeight {
 						bestWeight = w
 						bestIdx = i
 					}
 				}
-				// Put all random rolls into the best sub, at max roll value
-				ranges, _ := SubstatRollRanges[level][rarity]
+				ranges, _ := SubstatRollRanges[level][rarityKey]
 				maxRoll := ranges[projSubstats[bestIdx].Type][1]
 				projSubstats[bestIdx].Value += float64(randRolls) * maxRoll
 				projSubstats[bestIdx].Rolls += randRolls
 			case "worst":
-				// Find the worst substat for the hero
 				worstIdx := 0
 				worstWeight := 999.0
 				for i, sub := range projSubstats {
 					savKey := getSavKey(sub.Type)
-					w := getHeroWeightMultiplier(profile.Priorities[savKey])
+					w := GetPriorityWeight(profile.Priorities[savKey])
 					if w < worstWeight {
 						worstWeight = w
 						worstIdx = i
 					}
 				}
-				// Put all random rolls into the worst sub, at min roll value
-				ranges, _ := SubstatRollRanges[level][rarity]
+				ranges, _ := SubstatRollRanges[level][rarityKey]
 				minRoll := ranges[projSubstats[worstIdx].Type][0]
 				projSubstats[worstIdx].Value += float64(randRolls) * minRoll
 				projSubstats[worstIdx].Rolls += randRolls
@@ -136,51 +123,42 @@ func EvaluateLayer5(gear Gear, profile HeroProfile, baseStats HeroBaseStats) L5T
 
 			switch name {
 			case "expected":
-				// Probability-weighted average of all legal stats
-				// In expected case, we sum the scores and represent it as a virtual average stat contribution.
-				// For the list of substats, we can just pick the legal stat with the average weight,
-				// or average each legal stat's rolls.
-				// To keep it simple and representable, we create a virtual substat representing the expected 4th sub
-				// or we pick the legal stat that represents the median priority.
-				// Let's pick the legal stat with the highest weight for the expected case as a realistic average,
-				// or compute the average of all legal stats.
-				// Let's average values:
-				var avgVal float64
-				var avgType string = "AttackPercent" // placeholder
-				for _, s := range legal4thStats {
-					avgRoll := GetAverageRoll(level, rarity, s)
-					avgVal += float64(forced4thRolls) * avgRoll
-				}
-				avgVal /= float64(len(legal4thStats))
-				chosen4thType = avgType
-				val = avgVal
-			case "best":
-				// Pick the single best legal stat
 				bestType := legal4thStats[0]
-				bestWeight := -1.0
+				bestWeight := -999.0
 				for _, s := range legal4thStats {
-					w := getHeroWeightMultiplier(profile.Priorities[getSavKey(s)])
+					w := GetPriorityWeight(profile.Priorities[getSavKey(s)])
 					if w > bestWeight {
 						bestWeight = w
 						bestType = s
 					}
 				}
-				ranges, _ := SubstatRollRanges[level][rarity]
+				chosen4thType = bestType
+				val = float64(forced4thRolls) * GetAverageRoll(level, rarityKey, chosen4thType)
+			case "best":
+				bestType := legal4thStats[0]
+				bestWeight := -999.0
+				for _, s := range legal4thStats {
+					w := GetPriorityWeight(profile.Priorities[getSavKey(s)])
+					if w > bestWeight {
+						bestWeight = w
+						bestType = s
+					}
+				}
+				ranges, _ := SubstatRollRanges[level][rarityKey]
 				maxRoll := ranges[bestType][1]
 				chosen4thType = bestType
 				val = float64(forced4thRolls) * maxRoll
 			case "worst":
-				// Pick the single worst legal stat
 				worstType := legal4thStats[0]
 				worstWeight := 999.0
 				for _, s := range legal4thStats {
-					w := getHeroWeightMultiplier(profile.Priorities[getSavKey(s)])
+					w := GetPriorityWeight(profile.Priorities[getSavKey(s)])
 					if w < worstWeight {
 						worstWeight = w
 						worstType = s
 					}
 				}
-				ranges, _ := SubstatRollRanges[level][rarity]
+				ranges, _ := SubstatRollRanges[level][rarityKey]
 				minRoll := ranges[worstType][0]
 				chosen4thType = worstType
 				val = float64(forced4thRolls) * minRoll
@@ -192,18 +170,17 @@ func EvaluateLayer5(gear Gear, profile HeroProfile, baseStats HeroBaseStats) L5T
 				Rolls: rolls,
 			})
 		} else if forced4thRolls > 0 && len(projSubstats) == 4 {
-			// 4th sub already exists, add forced rolls into it
 			idx := 3
 			subType := projSubstats[idx].Type
 			switch name {
 			case "expected":
-				projSubstats[idx].Value += float64(forced4thRolls) * GetAverageRoll(level, rarity, subType)
+				projSubstats[idx].Value += float64(forced4thRolls) * GetAverageRoll(level, rarityKey, subType)
 			case "best":
-				ranges, _ := SubstatRollRanges[level][rarity]
+				ranges, _ := SubstatRollRanges[level][rarityKey]
 				maxRoll := ranges[subType][1]
 				projSubstats[idx].Value += float64(forced4thRolls) * maxRoll
 			case "worst":
-				ranges, _ := SubstatRollRanges[level][rarity]
+				ranges, _ := SubstatRollRanges[level][rarityKey]
 				minRoll := ranges[subType][0]
 				projSubstats[idx].Value += float64(forced4thRolls) * minRoll
 			}
@@ -235,19 +212,30 @@ func EvaluateLayer5(gear Gear, profile HeroProfile, baseStats HeroBaseStats) L5T
 			scenarioScore = GetWSSScore(Gear{Substats: reforgedSubstats})
 		}
 
-		heroScores := make(map[string]float64)
-		// fit score
-		fit := GetHeroWeightedScoreForSubstats(projSubstats, profile, baseStats)
-		// Add main stat contribution
-		mainSavKey := getSavKey(gear.Main.Type)
-		prio := profile.Priorities[mainSavKey]
-		mainWeight := getHeroWeightMultiplier(prio)
-		normMain := NormalizeStatValue(gear.Main.Type, gear.Main.Value, baseStats)
-		if gear.Reforged || level == 85 { // model reforged main
-			normMain = NormalizeStatValue(gear.Main.Type, gear.Main.Value+MainStatReforgeBonuses[gear.Main.Type], baseStats)
+		// Create projected gear object at +15 main stat value
+		mainValAt15 := MainStatValuesAtPlus15[level][gear.Main.Type]
+		if mainValAt15 <= 0 {
+			mainValAt15 = gear.Main.Value
 		}
-		fit += normMain * mainWeight
-		heroScores[profile.HeroID] = fit
+		projGear := Gear{
+			Slot:     gear.Slot,
+			Level:    gear.Level,
+			Rarity:   gear.Rarity,
+			Enhance:  15,
+			Main:     MainStat{Type: gear.Main.Type, Value: mainValAt15},
+			Substats: projSubstats,
+		}
+		if level == 85 {
+			projGear.Main.Value += MainStatReforgeBonuses[gear.Main.Type]
+			projGear.Substats = reforgedSubstats
+		}
+
+		projRawFit, _, projFitPct, _, _ := CalculateHeroFit(projGear, profile, baseStats)
+
+		heroScores := make(map[string]float64)
+		heroFitPcts := make(map[string]float64)
+		heroScores[profile.HeroID] = projRawFit
+		heroFitPcts[profile.HeroID] = projFitPct
 
 		trace.Scenarios = append(trace.Scenarios, ProjectionScenario{
 			ScenarioName: name,
@@ -255,21 +243,88 @@ func EvaluateLayer5(gear Gear, profile HeroProfile, baseStats HeroBaseStats) L5T
 			Reforged:     reforgedSubstats,
 			Score:        scenarioScore,
 			HeroScores:   heroScores,
+			HeroFitPcts:  heroFitPcts,
 		})
+	}
+
+	// Class Outcome Probabilities over remaining rolls (§4 & §5)
+	// Expected scenario gets 50% probability, best 25%, worst 25% (or continuous envelope mapping)
+	expFit := trace.Scenarios[0].HeroFitPcts[profile.HeroID]
+	bestFit := trace.Scenarios[1].HeroFitPcts[profile.HeroID]
+	worstFit := trace.Scenarios[2].HeroFitPcts[profile.HeroID]
+
+	// Classify outcomes across scenarios
+	var pCore, pUsable, pMarginal, pReject float64
+	scenWeights := []float64{0.50, 0.25, 0.25}
+	scenFits := []float64{expFit, bestFit, worstFit}
+
+	for idx, fitVal := range scenFits {
+		w := scenWeights[idx]
+		if fitVal >= 70.0 {
+			pCore += w
+		} else if fitVal >= 45.0 {
+			pUsable += w
+		} else if fitVal >= 20.0 {
+			pMarginal += w
+		} else {
+			pReject += w
+		}
+	}
+
+	pGood := pCore + pUsable
+	evFinal := pCore*85.0 + pUsable*57.0 + pMarginal*32.0 + pReject*0.0
+
+	trace.PCore = pCore
+	trace.PUsable = pUsable
+	trace.PMarginal = pMarginal
+	trace.PReject = pReject
+	trace.PGood = pGood
+	trace.EVFinal = evFinal
+
+	// Enhancement Controller Stop Card (§5)
+	riskTol := profile.RiskTolerance
+	if riskTol <= 0 {
+		riskTol = 0.5
+	}
+
+	costContinue := float64(15-enhance) * 1.0 // continuation cost per remaining roll step
+	valueStop := 0.0                          // default extract value = 0
+
+	action := "CONTINUE"
+	reason := ""
+
+	if enhance >= 15 {
+		action = "STOP"
+		reason = "ALREADY_DONE"
+	} else if pGood < riskTol {
+		action = "STOP"
+		reason = "LOW_ODDS"
+	} else if evFinal < 45.0 {
+		action = "STOP"
+		reason = "BELOW_FLOOR"
+	} else if (evFinal - costContinue) <= valueStop && enhance > 0 {
+		action = "STOP"
+		reason = "NOT_WORTH_COST"
+	}
+
+	rollSeq := "Hit core stats on remaining rolls"
+	if bestFit >= 70.0 {
+		rollSeq = "All remaining rolls hit top core stats"
+	}
+
+	trace.StopCard = &StopCard{
+		EnhanceAtPoint:      enhance,
+		ObservedFitPct:      currentFitPct,
+		PGood:               pGood,
+		EVFinal:             evFinal,
+		Recommended:         action,
+		Reason:              reason,
+		RollSequenceForCore: rollSeq,
 	}
 
 	return trace
 }
 
 func getHeroWeightMultiplier(prio int) float64 {
-	switch prio {
-	case 1:
-		return 1.0
-	case 2:
-		return 2.5
-	case 3:
-		return 5.0
-	default:
-		return 0.0
-	}
+	return GetPriorityWeight(prio)
 }

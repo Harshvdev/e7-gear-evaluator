@@ -1,6 +1,9 @@
 package main
 
+import "strings"
+
 // ---------------------------------------------------------------------------
+
 // static_data.go — All immutable game data, roll ranges, and probabilities.
 //
 // Source: Fribbels E7 Optimizer dataset and geardata.md rules.
@@ -248,3 +251,64 @@ func GetAverageRoll(level int, rarity string, statType string) float64 {
 
 	return (r[0] + r[1]) / 2.0
 }
+
+// GetLegalSubstats returns the list of allowed substats for a slot, excluding main stat and existing substats.
+func GetLegalSubstats(slot string, mainType string, existingSubTypes []string) []string {
+	allowed, ok := SubstatsBySlot[slot]
+	if !ok {
+		return []string{}
+	}
+
+	normMain := NormalizeStatType(mainType)
+	existingSet := make(map[string]bool)
+	for _, sub := range existingSubTypes {
+		existingSet[NormalizeStatType(sub)] = true
+	}
+
+	var legal []string
+	for stat := range allowed {
+		normStat := NormalizeStatType(stat)
+		if normStat == normMain {
+			continue
+		}
+		if existingSet[normStat] {
+			continue
+		}
+		legal = append(legal, stat)
+	}
+	return legal
+}
+
+// NormalizeStatType standardizes stat names to internal canonical keys (e.g. "AttackPercent", "Speed").
+func NormalizeStatType(s string) string {
+	sLower := strings.ToLower(strings.TrimSpace(s))
+	sClean := strings.ReplaceAll(strings.ReplaceAll(sLower, " ", ""), "_", "")
+
+	switch sClean {
+	case "attack", "atk", "flatattack", "flatatk":
+		return "Attack"
+	case "attackpercent", "atkpercent", "attack%", "atk%", "percentattack":
+		return "AttackPercent"
+	case "defense", "def", "flatdefense", "flatdef":
+		return "Defense"
+	case "defensepercent", "defpercent", "defense%", "def%", "percentdefense":
+		return "DefensePercent"
+	case "health", "hp", "flathealth", "flathp":
+		return "Health"
+	case "healthpercent", "hppercent", "health%", "hp%", "percenthealth":
+		return "HealthPercent"
+	case "speed", "spd":
+		return "Speed"
+	case "crithitchancepercent", "critchancepercent", "critchance%", "crit%", "cc", "chc":
+		return "CritHitChancePercent"
+	case "crithitdamagepercent", "critdamagepercent", "critdamage%", "cdmg%", "cd", "cdmg", "chd":
+		return "CritHitDamagePercent"
+	case "effectivenesspercent", "effectiveness%", "eff%", "eff":
+		return "EffectivenessPercent"
+	case "effectresistancepercent", "effectresistpercent", "effectresistance%", "effectresist%", "res%", "res", "efr":
+		return "EffectResistancePercent"
+	default:
+		return s
+	}
+}
+

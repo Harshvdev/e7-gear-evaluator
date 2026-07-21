@@ -22,7 +22,7 @@ func handleEvaluate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Run the 7-Layer Evaluation Pipeline
-	resp := RunEvaluationPipeline(req.Gear, req.SpeedCheck, req.ExcludedBuilds, req.CustomProfiles)
+	resp := RunEvaluationPipeline(req.Gear, req.SpeedCheck, req.ModBudget, req.ReforgeBudget, req.ExcludedBuilds, req.CustomProfiles)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {

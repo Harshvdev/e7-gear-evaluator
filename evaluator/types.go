@@ -154,6 +154,8 @@ type EvaluateRequest struct {
 	Gear           Gear                           `json:"gear"`
 	ExcludedBuilds map[string][]int               `json:"excludedBuilds"` // HeroName -> list of excluded build ranks (1-indexed)
 	SpeedCheck     string                         `json:"speedCheck,omitempty"`     // "ON" | "OFF" (defaults to ON)
+	ModBudget      string                         `json:"modBudget,omitempty"`      // "none" | "surplus" (default "none")
+	ReforgeBudget  string                         `json:"reforgeBudget,omitempty"`  // "none" | "surplus" (default "none")
 	CustomProfiles map[string]map[int]HeroProfile `json:"customProfiles,omitempty"` // HeroName -> build rank -> custom profile configurations
 }
 
@@ -230,6 +232,25 @@ type L1Landmine struct {
 // 4. New 7-Layer Architecture types
 // ---------------------------------------------------------------------------
 
+// PRIORITY_WEIGHTS maps the 9-position priority scale (-3..+5) to signed weights per Q-E7-Architecture §2.2
+var PRIORITY_WEIGHTS = map[int]float64{
+	5:  6.0,  // essential: defining stat
+	4:  3.5,  // core: must be present & rolled well
+	3:  2.0,  // wanted: strong positive
+	2:  1.0,  // useful: counts normally
+	1:  0.4,  // filler: marginal positive
+	0:  0.0,  // neutral: ignored
+	-1: -1.0, // dead: wasted slot
+	-2: -2.5, // harmful: actively bad
+	-3: -4.0, // poison: carrying it makes piece worse
+}
+
+// ABSENCE_COST penalizes a piece for omitting a slot-possible core/essential stat per Q-E7-Architecture §3.2
+var ABSENCE_COST = map[int]float64{
+	5: 18.0, // missing essential (+5) stat
+	4: 10.0, // missing core (+4) stat
+}
+
 type StatBounds struct {
 	Min *float64 `json:"min"`
 	Max *float64 `json:"max"`
@@ -246,6 +267,8 @@ type HeroProfile struct {
 	HeroName       string                `json:"heroName"`
 	BuildRank      int                   `json:"buildRank"`
 	Selected       bool                  `json:"selected"`
+	RosterTier     string                `json:"rosterTier,omitempty"`    // "primary" | "bench" | "catalog" (default "primary")
+	RiskTolerance  float64               `json:"riskTolerance,omitempty"` // 0.0 .. 1.0 (default 0.5)
 	StatRanges     map[string]StatBounds `json:"statRanges"`
 	Sets           [][]string            `json:"sets"` // list of acceptable set combinations
 	Priorities     map[string]int        `json:"priorities"`
@@ -280,12 +303,18 @@ type L3Trace struct {
 }
 
 type L4HeroGateResult struct {
-	HeroName    string  `json:"heroName"`
-	BuildRank   int     `json:"buildRank"`
-	GateResults [4]bool `json:"gateResults"` // index 0: Set, 1: Main, 2: Range, 3: Fit Score
-	FitScore    float64 `json:"fitScore"`
-	Threshold   float64 `json:"threshold"`
-	Pass        bool    `json:"pass"`
+	HeroName       string  `json:"heroName"`
+	BuildRank      int     `json:"buildRank"`
+	RosterTier     string  `json:"rosterTier"`
+	GateResults    [4]bool `json:"gateResults"` // index 0: Set, 1: Main, 2: Range, 3: Fit Score
+	FitScore       float64 `json:"fitScore"`
+	RawFit         float64 `json:"rawFit"`
+	MaxFit         float64 `json:"maxFit"`
+	AbsencePenalty float64 `json:"absencePenalty"`
+	FitPct         float64 `json:"fitPct"`   // normalized signed fit% in [-100, +100]
+	FitClass       string  `json:"fitClass"` // "CORE", "USABLE", "MARGINAL", "REJECT"
+	Threshold      float64 `json:"threshold"`
+	Pass           bool    `json:"pass"`
 }
 
 type L4Trace struct {
@@ -298,27 +327,50 @@ type ProjectionScenario struct {
 	Reforged     []Substat          `json:"reforged"`     // projected reforge values
 	Score        float64            `json:"score"`        // WSS score
 	HeroScores   map[string]float64 `json:"heroScores"`   // hero_rank -> fit score
+	HeroFitPcts  map[string]float64 `json:"heroFitPcts"`  // hero_rank -> signed fit%
+}
+
+// StopCard is the enhancement depth decision emitted by the Enhancement Controller (§5)
+type StopCard struct {
+	EnhanceAtPoint      int     `json:"enhanceAtPoint"`
+	ObservedFitPct      float64 `json:"observedFitPct"`
+	PGood               float64 `json:"pGood"`
+	EVFinal             float64 `json:"evFinal"`
+	Recommended         string  `json:"recommended"` // "CONTINUE" | "STOP"
+	Reason              string  `json:"reason,omitempty"`
+	RollSequenceForCore string  `json:"rollSequenceForCore,omitempty"`
 }
 
 type L5Trace struct {
-	CurrentWSS       float64              `json:"currentWss"`
-	CurrentHeroScore map[string]float64   `json:"currentHeroScore"` // hero_rank -> fit score
-	Scenarios        []ProjectionScenario `json:"scenarios"`
+	CurrentWSS        float64              `json:"currentWss"`
+	CurrentHeroScore  map[string]float64   `json:"currentHeroScore"`  // hero_rank -> fit score
+	CurrentHeroFitPct map[string]float64   `json:"currentHeroFitPct"` // hero_rank -> fit%
+	PCore             float64              `json:"pCore"`
+	PUsable           float64              `json:"pUsable"`
+	PMarginal         float64              `json:"pMarginal"`
+	PReject           float64              `json:"pReject"`
+	PGood             float64              `json:"pGood"`
+	EVFinal           float64              `json:"evFinal"`
+	StopCard          *StopCard            `json:"stopCard,omitempty"`
+	Scenarios         []ProjectionScenario `json:"scenarios"`
 }
 
 type SalvagePlan struct {
-	DeadSubStat   string  `json:"deadSubStat"`
-	TargetStat    string  `json:"targetStat"`
-	ExpectedValue float64 `json:"expectedValue"`
-	RescoredFit   float64 `json:"rescoredFit"`
+	DeadSubStat    string  `json:"deadSubStat"`
+	TargetStat     string  `json:"targetStat"`
+	ExpectedValue  float64 `json:"expectedValue"`
+	RescoredFit    float64 `json:"rescoredFit"`
+	RescoredFitPct float64 `json:"rescoredFitPct"`
 }
 
 type L6Trace struct {
-	Verdict       string       `json:"verdict"` // KEEP_ENHANCE, SALVAGE_MOD, SPEED_VAULT, SELL_EXTRACT
+	Verdict       string       `json:"verdict"` // KEEP_ENHANCE, KEEP_MARGINAL, SALVAGE_MOD, REFORGE_TAG, SPEED_VAULT, SELL_EXTRACT
 	WinnerHero    string       `json:"winnerHero"`
 	WinnerBuild   int          `json:"winnerBuild"`
 	RunnerUps     []string     `json:"runnerUps"` // list of "Hero_Name (Build X)"
 	SalvageDetail *SalvagePlan `json:"salvageDetail,omitempty"`
+	ModBudget     string       `json:"modBudget"`
+	ReforgeBudget string       `json:"reforgeBudget"`
 }
 
 type GearTrace struct {
